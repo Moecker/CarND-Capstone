@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 from std_msgs.msg import Int32
-from geometry_msgs.msg import PoseStamped, Pose
+from geometry_msgs.msg import PoseStamped, Pose, Point
 from styx_msgs.msg import TrafficLightArray, TrafficLight
 from styx_msgs.msg import Lane
 from sensor_msgs.msg import Image
@@ -10,6 +10,7 @@ from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
+from scipy.spatial.distance import cdist
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -49,6 +50,9 @@ class TLDetector(object):
         self.last_wp = -1
         self.state_count = 0
 
+        # List of positions that correspond to the line to stop in front of for a given intersection
+        self.stop_line_positions = self.config['stop_line_positions']
+
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -56,6 +60,7 @@ class TLDetector(object):
 
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
+        self.waypoints_positions = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in self.waypoints.waypoints]
 
     def traffic_cb(self, msg):
         self.lights = msg.lights
@@ -90,18 +95,20 @@ class TLDetector(object):
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
         self.state_count += 1
 
-    def get_closest_waypoint(self, pose):
+    def get_closest_waypoint(self, position, waypoints=None):
         """Identifies the closest path waypoint to the given position
             https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
         Args:
-            pose (Pose): position to match a waypoint to
+            position (Point): position to match a waypoint to
 
         Returns:
-            int: index of the closest waypoint in self.waypoints
+            int: index of the closest waypoint in waypoints
 
         """
-        #TODO implement
-        return 0
+        # @done implement
+        if (not waypoints):
+            waypoints = self.waypoints_positions
+        return cdist([[position.x, position.y]], waypoints).argmin()
 
     def get_light_state(self, light):
         """Determines the current color of the traffic light
@@ -127,23 +134,24 @@ class TLDetector(object):
             location and color
 
         Returns:
-            int: index of waypoint closes to the upcoming stop line for a traffic light (-1 if none exists)
+            int: index of waypoint closest to the upcoming stop line for a traffic light (-1 if none exists)
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
         light = None
 
-        # List of positions that correspond to the line to stop in front of for a given intersection
-        stop_line_positions = self.config['stop_line_positions']
-        if(self.pose):
-            car_position = self.get_closest_waypoint(self.pose.pose)
-
-        #TODO find the closest visible traffic light (if one exists)
+        # @done find the closest visible traffic light (if one exists)
+        if(self.pose and self.waypoints):
+            car_position = self.get_closest_waypoint(self.pose.pose.position)
+            closest_stop_line_index = self.get_closest_waypoint(self.pose.pose.position, self.stop_line_positions)
+            closest_stop_line = self.stop_line_positions[closest_stop_line_index]
+            light_wp = self.get_closest_waypoint(Point(closest_stop_line[0], closest_stop_line[1], 0))
+            if abs(car_position - light_wp) < 100:
+                light = True # assume visibility is 100 meters
 
         if light:
             state = self.get_light_state(light)
             return light_wp, state
-        self.waypoints = None
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
