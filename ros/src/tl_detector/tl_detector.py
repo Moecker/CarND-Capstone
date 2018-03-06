@@ -13,6 +13,7 @@ import yaml
 from scipy.spatial.distance import cdist
 
 STATE_COUNT_THRESHOLD = 3
+LIGHT_LOCATION_THRESHOLD = 30 # meters, for comparing real position to known position of traffic lights
 
 class TLDetector(object):
     def __init__(self):
@@ -127,7 +128,9 @@ class TLDetector(object):
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         #Get classification
-        return self.light_classifier.get_classification(cv_image)
+        #TODO: remove the `return light.state` statement and uncomment the following line
+        #return self.light_classifier.get_classification(cv_image)
+        return light.state
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
@@ -146,8 +149,13 @@ class TLDetector(object):
             closest_stop_line_index = self.get_closest_waypoint(self.pose.pose.position, self.stop_line_positions)
             closest_stop_line = self.stop_line_positions[closest_stop_line_index]
             light_wp = self.get_closest_waypoint(Point(closest_stop_line[0], closest_stop_line[1], 0))
-            if abs(car_position - light_wp) < 100:
-                light = True # assume visibility is 100 meters
+            if abs(car_position - light_wp) < 100: # assume visibility is 100 meters
+                for real_light in self.lights:
+                    light_position = real_light.pose.pose.position
+                    light_x_approx = abs(light_position.x - closest_stop_line[0]) < LIGHT_LOCATION_THRESHOLD
+                    light_y_approx = abs(light_position.y - closest_stop_line[1]) < LIGHT_LOCATION_THRESHOLD
+                    if light_x_approx and light_y_approx:
+                        light = real_light
 
         if light:
             state = self.get_light_state(light)
