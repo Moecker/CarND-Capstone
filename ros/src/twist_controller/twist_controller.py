@@ -1,7 +1,3 @@
-
-GAS_DENSITY = 2.858
-ONE_MPH = 0.44704
-
 import rospy
 
 from pid import PID
@@ -19,23 +15,30 @@ class YawControllerProperties:
 
 
 class PIDControllerProperties:
-    def __init__(self, decel_limit, accel_limit):
+    def __init__(self, decel_limit, accel_limit, max_brake_torque, max_throttle):
         self.decel_limit = decel_limit
         self.accel_limit = accel_limit
+        self.max_brake_torque = max_brake_torque
+        self.max_throttle = max_throttle
 
 
 class LowPassFilterProperties:
     def __init__(self, wheel_radius, brake_deadband):
         self.wheel_radius = wheel_radius
         self.brake_deadband = brake_deadband
+        self.ts = 1.0/50.0
 
 
 class Controller(object):
     def __init__(self, pid_controller_properties, yaw_controller_properties, lowpass_filter_properties):
 
-        # @todo Find suitable values for PID properties
-        self.pid = PID(kp=0.1, ki=0.01, kd=0.001,
-                       mn=pid_controller_properties.decel_limit, mx=pid_controller_properties.accel_limit)
+        # @done Find suitable values for PID properties
+        self.pid = PID(kp=0.5, ki=0.01, kd=0.001,
+                       mn=pid_controller_properties.decel_limit,
+                       mx=pid_controller_properties.accel_limit)
+
+        self.max_brake_torque = pid_controller_properties.max_brake_torque
+        self.max_throttle = pid_controller_properties.max_throttle
 
         self.yaw_controller = YawController(yaw_controller_properties.wheel_base,
                                             yaw_controller_properties.steer_ratio,
@@ -43,40 +46,68 @@ class Controller(object):
                                             yaw_controller_properties.max_lat_accel,
                                             yaw_controller_properties.max_steer_angle)
 
-        # @todo Check what are actual correct properties for tau and ts for the lowpass filter
-        self.low_pass_filter_pid = LowPassFilter(lowpass_filter_properties.brake_deadband, 1.0/50.0)
-        self.low_pass_filter_yaw_controller = LowPassFilter(lowpass_filter_properties.wheel_radius, 1.0/50.0)
+        # @done Check what are actual correct properties for tau and ts for the lowpass filter
+        self.low_pass_filter_pid = LowPassFilter(lowpass_filter_properties.brake_deadband,
+                                                 lowpass_filter_properties.ts)
+
+        self.low_pass_filter_yaw_controller = LowPassFilter(lowpass_filter_properties.wheel_radius,
+                                                            lowpass_filter_properties.ts)
 
 
     def control(self, proposed_linear_velocity, proposed_angular_velocity, current_linear_velocity, is_dbw_enabled):
+        throttle = 0.0
+        brake = 0.0
+        steer = 0.0
+
+        if not is_dbw_enabled:
+            rospy.loginfo("Gauss - DBW not enabled, resetting PID, throttle, brake and steer")
+            self.pid.reset()
+            return throttle, brake, steer
+
+        # Check whether required topics are valid, else return
+        if not all((proposed_linear_velocity, proposed_angular_velocity, current_linear_velocity)):
+            rospy.loginfo("Gauss - Not all required topics have been received")
+            return throttle, brake, steer
+
+        # Reset PID if we are about to stop soon
+        kMinimumSpeedUntilReset = 0.5
+        if abs(proposed_linear_velocity) <= kMinimumSpeedUntilReset:
+            rospy.loginfo("Gauss - Reseting due to too low speed")
+            self.pid.reset()
+
+        # Compute the error for the PID
         error = proposed_linear_velocity - current_linear_velocity
         rospy.loginfo("Gauss - Got error for PID: " + str(error))
 
         pid_result = self.pid.step(error=error, sample_time=1.0/50.0)
         rospy.loginfo("Gauss - PID Result: " + str(pid_result))
 
-        if pid_result > 0.0:
-            throttle = pid_result
+        kSkipControlWindow = 1.0
+        if pid_result >= 0.0:
+            throttle = max(self.max_throttle, pid_result)
+            brake = 0.0
+        elif control >= kSkipControlWindow:
+            throttle = 0.0
             brake = 0.0
         else:
             throttle = 0.0
-            brake = pid_result
+            brake = -max(self.max_brake_torque, pid_result)
+
+        # Apply low pass filter on braking
+        kMinBraking = 100.0
+        brake = self.low_pass_filter_pid.filter(brake)
+        if brake < kMinBraking:
+            brake = 0.0
 
         steer = self.yaw_controller.get_steering(proposed_linear_velocity,
                                                  proposed_angular_velocity,
                                                  current_linear_velocity)
 
-        if not is_dbw_enabled:
-            rospy.loginfo("Gauss - DBW not enabled, resetting PID, throttle, brake and steer")
-            self.pid.reset()
-
-            throttle = 0.0
-            brake = 0.0
-            steer = 0.0
+        # Apply low pass filter on steering
+        steer = self.low_pass_filter_yaw_controller(steer)
 
         rospy.loginfo("Gauss - Throttle: " + str(throttle))
         rospy.loginfo("Gauss - Brake: " + str(brake))
         rospy.loginfo("Gauss - Steering: " + str(steer))
 
-        # Return throttle, brake, steer
         return throttle, brake, steer
