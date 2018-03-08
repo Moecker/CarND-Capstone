@@ -65,7 +65,6 @@ class WaypointUpdater(object):
         #
         #    rospy.loginfo("Gauss - Publishing Waypoints of length: " + str(len(output_msg.waypoints)))
         #    self.final_waypoints_pub.publish(output_msg)
-        #    rospy.logerr("In Pose")
 
     def waypoints_cb(self, waypoints):
         # @done: Implement
@@ -80,13 +79,15 @@ class WaypointUpdater(object):
         if not self.base_waypoints_msg or not self.last_pose:
             return
             
+        targetvel = rospy.get_param("/waypoint_loader/velocity")
+        
         waypoints = self.base_waypoints_msg.waypoints
         index = self.closest_waypoint_index(self.last_pose.position, waypoints)
         # For now, if we passed the stop point already, no looking back
         if msg.data == TrafficLight.UNKNOWN or msg.data == TrafficLight.GREEN or index > msg.data:
             waypoints_sliced = waypoints[index:index+LOOKAHEAD_WPS]
             for wpt in range(len(waypoints_sliced)):
-                self.set_waypoint_velocity(waypoints_sliced, wpt, 10.0) #Constant velocity of 10 meters/sec for now
+                self.set_waypoint_velocity(waypoints_sliced, wpt, targetvel)
             output_msg = Lane()
             output_msg.header = self.base_waypoints_msg.header
             output_msg.waypoints = waypoints_sliced
