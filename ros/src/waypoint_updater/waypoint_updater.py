@@ -70,7 +70,7 @@ class WaypointUpdater(object):
             
         self.dirty = False
             
-        targetvel = rospy.get_param("/waypoint_loader/velocity")
+        targetvel = self.kmph2mps(rospy.get_param("/waypoint_loader/velocity"))
 
         highval = 99999999
         lightconv = highval if self.lightidx == -1 else self.lightidx
@@ -128,6 +128,9 @@ class WaypointUpdater(object):
             dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
             wp1 = i
         return dist
+
+    def kmph2mps(self, velocity_kmph):
+        return (velocity_kmph * 1000.) / (60. * 60.)
 
 if __name__ == '__main__':
     try:
