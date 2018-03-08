@@ -2,7 +2,7 @@
 
 import rospy
 from geometry_msgs.msg import PoseStamped
-from styx_msgs.msg import Lane, Waypoint, TrafficLight
+from styx_msgs.msg import Lane, Waypoint
 from scipy.spatial.distance import cdist
 import math
 from std_msgs.msg import Int32
@@ -35,7 +35,7 @@ class WaypointUpdater(object):
         # @done: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
         # Removed for now, as those raise warnings
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
-        # rospy.Subscriber('/obstacle_waypoint', Int32, self.obstacle_cb)
+        #rospy.Subscriber('/obstacle_waypoint', Int32, self.obstacle_cb)
 
         self.final_waypoints_pub = rospy.Publisher('/final_waypoints', Lane, queue_size=1)
 
@@ -84,7 +84,7 @@ class WaypointUpdater(object):
         waypoints = self.base_waypoints_msg.waypoints
         index = self.closest_waypoint_index(self.last_pose.position, waypoints)
         # For now, if we passed the stop point already, no looking back
-        if msg.data == TrafficLight.UNKNOWN or msg.data == TrafficLight.GREEN or index > msg.data:
+        if msg.data == -1:
             waypoints_sliced = waypoints[index:index+LOOKAHEAD_WPS]
             for wpt in range(len(waypoints_sliced)):
                 self.set_waypoint_velocity(waypoints_sliced, wpt, targetvel)
@@ -92,10 +92,8 @@ class WaypointUpdater(object):
             output_msg.header = self.base_waypoints_msg.header
             output_msg.waypoints = waypoints_sliced
             self.final_waypoints_pub.publish(output_msg)
-        elif msg.data == TrafficLight.YELLOW:
-            pass
-        elif msg.data == TrafficLight.RED:
-            pass
+        else:
+            pass # stop at index msg.data
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
@@ -114,7 +112,6 @@ class WaypointUpdater(object):
             dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
             wp1 = i
         return dist
-
 
 if __name__ == '__main__':
     try:
