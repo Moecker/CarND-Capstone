@@ -86,12 +86,12 @@ class Controller(object):
 
         if pid_result >= 0.0:
             # We want to accelerate
-            throttle = self.scale(pid_result, self.max_throttle, )
+            throttle = self.scale(pid_result, self.max_throttle)
             brake = 0.0
         else:
             # We want to decelerate
             throttle = 0.0
-            brake = self.scale(abs(pid_result), self.max_brake_torque, )
+            brake = self.scale(abs(pid_result), self.max_brake_torque)
 
             # Apply low pass filter on braking
             brake = self.low_pass_filter_pid.filt(brake)
