@@ -2,7 +2,7 @@
 
 import rospy
 from geometry_msgs.msg import PoseStamped
-from styx_msgs.msg import Lane, Waypoint
+from styx_msgs.msg import Lane, Waypoint, TrafficLight
 from scipy.spatial.distance import cdist
 import math
 from std_msgs.msg import Int32
@@ -41,6 +41,7 @@ class WaypointUpdater(object):
 
         # @done: Add other member variables you need below
         self.base_waypoints_msg = None
+        self.last_pose = None
 
         rospy.spin()
 
@@ -49,19 +50,22 @@ class WaypointUpdater(object):
         x = msg.pose.position.x
         y = msg.pose.position.y
         rospy.loginfo("Gauss - Got Pose (x, y): " + str(x) + ", " + str(y))
+        self.last_pose = msg.pose
 
-        if self.base_waypoints_msg is not None:
-            waypoints = self.base_waypoints_msg.waypoints
-
-            index = self.closest_waypoint_index(msg.pose.position, waypoints)
-            waypoints_sliced = waypoints[index:index+LOOKAHEAD_WPS]
-
-            output_msg = Lane()
-            output_msg.header = self.base_waypoints_msg.header
-            output_msg.waypoints = waypoints_sliced
-
-            rospy.loginfo("Gauss - Publishing Waypoints of length: " + str(len(output_msg.waypoints)))
-            self.final_waypoints_pub.publish(output_msg)
+        # Old waypoint code for reference
+        #if self.base_waypoints_msg is not None:
+        #    waypoints = self.base_waypoints_msg.waypoints
+        #
+        #    index = self.closest_waypoint_index(msg.pose.position, waypoints)
+        #    waypoints_sliced = waypoints[index:index+LOOKAHEAD_WPS]
+        #
+        #    output_msg = Lane()
+        #    output_msg.header = self.base_waypoints_msg.header
+        #    output_msg.waypoints = waypoints_sliced
+        #
+        #    rospy.loginfo("Gauss - Publishing Waypoints of length: " + str(len(output_msg.waypoints)))
+        #    self.final_waypoints_pub.publish(output_msg)
+        #    rospy.logerr("In Pose")
 
     def waypoints_cb(self, waypoints):
         # @done: Implement
@@ -73,8 +77,24 @@ class WaypointUpdater(object):
         return cdist([[position.x, position.y]], positions).argmin()
 
     def traffic_cb(self, msg):
-        # TODO: Callback for /traffic_waypoint message. Implement
-        pass
+        if not self.base_waypoints_msg or not self.last_pose:
+            return
+            
+        waypoints = self.base_waypoints_msg.waypoints
+        index = self.closest_waypoint_index(self.last_pose.position, waypoints)
+        # For now, if we passed the stop point already, no looking back
+        if msg.data == TrafficLight.UNKNOWN or msg.data == TrafficLight.GREEN or index > msg.data:
+            waypoints_sliced = waypoints[index:index+LOOKAHEAD_WPS]
+            for wpt in range(len(waypoints_sliced)):
+                self.set_waypoint_velocity(waypoints_sliced, wpt, 10.0) #Constant velocity of 10 meters/sec for now
+            output_msg = Lane()
+            output_msg.header = self.base_waypoints_msg.header
+            output_msg.waypoints = waypoints_sliced
+            self.final_waypoints_pub.publish(output_msg)
+        elif msg.data == TrafficLight.YELLOW:
+            pass
+        elif msg.data == TrafficLight.RED:
+            pass
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
