@@ -107,6 +107,7 @@ class Controller(object):
         rospy.loginfo("Gauss - Brake: " + str(brake))
         rospy.loginfo("Gauss - Steering: " + str(steer))
 
+        # Return throttle, brake, steer
         return throttle, brake, steer
 
 
