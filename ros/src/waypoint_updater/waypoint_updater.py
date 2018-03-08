@@ -23,6 +23,7 @@ Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+WAITANDSEESKIP_WPS = 50
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -35,13 +36,21 @@ class WaypointUpdater(object):
         # @done: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
         # Removed for now, as those raise warnings
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
-        #rospy.Subscriber('/obstacle_waypoint', Int32, self.obstacle_cb)
+        rospy.Subscriber('/obstacle_waypoint', Int32, self.obstacle_cb)
 
         self.final_waypoints_pub = rospy.Publisher('/final_waypoints', Lane, queue_size=1)
 
         # @done: Add other member variables you need below
         self.base_waypoints_msg = None
-        self.last_pose = None
+        self.lightidx = -1          # Waypoint of last set traffic light to stop at (-1 for none)
+        self.obstacleidx = -1       # Waypoint of last set obstacle detected (-1 for none)
+        
+        # Has something changed in the scene that we need to address?
+        self.dirty = False
+        
+        # If the scene is stale, at what progression do we allow ourselves
+        # to continue calculating more waypoints to travel?
+        self.holdoffindex = -1 
 
         rospy.spin()
 
@@ -50,21 +59,42 @@ class WaypointUpdater(object):
         x = msg.pose.position.x
         y = msg.pose.position.y
         rospy.loginfo("Gauss - Got Pose (x, y): " + str(x) + ", " + str(y))
-        self.last_pose = msg.pose
 
-        # Old waypoint code for reference
-        #if self.base_waypoints_msg is not None:
-        #    waypoints = self.base_waypoints_msg.waypoints
-        #
-        #    index = self.closest_waypoint_index(msg.pose.position, waypoints)
-        #    waypoints_sliced = waypoints[index:index+LOOKAHEAD_WPS]
-        #
-        #    output_msg = Lane()
-        #    output_msg.header = self.base_waypoints_msg.header
-        #    output_msg.waypoints = waypoints_sliced
-        #
-        #    rospy.loginfo("Gauss - Publishing Waypoints of length: " + str(len(output_msg.waypoints)))
-        #    self.final_waypoints_pub.publish(output_msg)
+        if self.base_waypoints_msg is not None:
+            waypoints = self.base_waypoints_msg.waypoints
+            
+        index = self.closest_waypoint_index(msg.pose.position, waypoints)
+            
+        if not self.dirty and self.holdoffindex != -1 and index < self.holdoffindex :
+            return
+            
+        self.dirty = False
+            
+        targetvel = rospy.get_param("/waypoint_loader/velocity")
+
+        highval = 99999999
+        lightconv = highval if self.lightidx == -1 else self.lightidx
+        obstcconv = highval if self.obstacleidx == -1 else self.obstacleidx
+        stopidx = min(lightconv, obstcconv)
+            
+        # TODO: More intelligent waypoints
+        if stopidx == highval:
+            rospy.logdebug("Generated forward waypoints")
+            for wpt in range(index, index+LOOKAHEAD_WPS):
+                self.set_waypoint_velocity(waypoints, wpt, targetvel)
+        else:
+            rospy.logdebug("Generated stop waypoints") #(Not really)
+            for wpt in range(index, index+LOOKAHEAD_WPS):
+                self.set_waypoint_velocity(waypoints, wpt, targetvel)
+        
+        waypoints_sliced = waypoints[index:index+LOOKAHEAD_WPS]
+        output_msg = Lane()
+        output_msg.header = self.base_waypoints_msg.header
+        output_msg.waypoints = waypoints_sliced
+
+        rospy.loginfo("Gauss - Publishing Waypoints of length: " + str(len(output_msg.waypoints)))
+        self.final_waypoints_pub.publish(output_msg)
+        self.holdoffindex = index + WAITANDSEESKIP_WPS
 
     def waypoints_cb(self, waypoints):
         # @done: Implement
@@ -76,28 +106,14 @@ class WaypointUpdater(object):
         return cdist([[position.x, position.y]], positions).argmin()
 
     def traffic_cb(self, msg):
-        if not self.base_waypoints_msg or not self.last_pose:
-            return
-            
-        targetvel = rospy.get_param("/waypoint_loader/velocity")
+        if self.obstacleidx != msg.data:
+            self.dirty = True
+            self.obstacleidx = msg.data 
         
-        waypoints = self.base_waypoints_msg.waypoints
-        index = self.closest_waypoint_index(self.last_pose.position, waypoints)
-        # For now, if we passed the stop point already, no looking back
-        if msg.data == -1:
-            waypoints_sliced = waypoints[index:index+LOOKAHEAD_WPS]
-            for wpt in range(len(waypoints_sliced)):
-                self.set_waypoint_velocity(waypoints_sliced, wpt, targetvel)
-            output_msg = Lane()
-            output_msg.header = self.base_waypoints_msg.header
-            output_msg.waypoints = waypoints_sliced
-            self.final_waypoints_pub.publish(output_msg)
-        else:
-            pass # stop at index msg.data
-
     def obstacle_cb(self, msg):
-        # TODO: Callback for /obstacle_waypoint message. We will implement it later
-        pass
+        if self.obstacleidx != msg.data:
+            self.dirty = True
+            self.obstacleidx = msg.data 
 
     def get_waypoint_velocity(self, waypoint):
         return waypoint.twist.twist.linear.x
