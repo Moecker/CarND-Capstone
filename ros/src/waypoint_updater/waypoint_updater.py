@@ -52,6 +52,8 @@ class WaypointUpdater(object):
         # to continue calculating more waypoints to travel?
         self.holdoffindex = -1 
 
+        self.targetvel = self.kmph2mps(rospy.get_param("/waypoint_loader/velocity"))
+
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -62,15 +64,15 @@ class WaypointUpdater(object):
 
         if self.base_waypoints_msg is not None:
             waypoints = self.base_waypoints_msg.waypoints
-            
+        # should we have an else statement here? the flow continues with waypoints
+        # being unnasigned if base_waypoints_msg is None
+
         index = self.closest_waypoint_index(msg.pose.position, waypoints)
-            
+
         if not self.dirty and self.holdoffindex != -1 and index < self.holdoffindex :
             return
             
         self.dirty = False
-            
-        targetvel = self.kmph2mps(rospy.get_param("/waypoint_loader/velocity"))
 
         highval = 99999999
         lightconv = highval if self.lightidx == -1 else self.lightidx
@@ -81,11 +83,11 @@ class WaypointUpdater(object):
         if stopidx == highval:
             rospy.logdebug("Generated forward waypoints")
             for wpt in range(index, index+LOOKAHEAD_WPS):
-                self.set_waypoint_velocity(waypoints, wpt, targetvel)
+                self.set_waypoint_velocity(waypoints, wpt, self.targetvel)
         else:
             rospy.logdebug("Generated stop waypoints") #(Not really)
             for wpt in range(index, index+LOOKAHEAD_WPS):
-                self.set_waypoint_velocity(waypoints, wpt, targetvel)
+                self.set_waypoint_velocity(waypoints, wpt, self.targetvel)
         
         waypoints_sliced = waypoints[index:index+LOOKAHEAD_WPS]
         output_msg = Lane()
