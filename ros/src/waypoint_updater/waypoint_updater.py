@@ -54,11 +54,10 @@ class WaypointUpdater(object):
             rate.sleep()
 
     def update_final_waypoints(self):
-        if (not self.position):
+        if not self.position or not self.base_waypoints_msg:
             return
 
-        if self.base_waypoints_msg:
-            index = self.closest_waypoint_index(self.position)
+        index = self.closest_waypoint_index(self.position)
 
         highval = 99999999
         lightconv = highval if self.lightidx == -1 else self.lightidx
