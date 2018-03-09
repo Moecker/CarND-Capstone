@@ -41,6 +41,8 @@ class WaypointUpdater(object):
 
         # @done: Add other member variables you need below
         self.base_waypoints_msg = None
+        self.waypt_count = 0
+        
         self.lightidx = -1          # Waypoint of last set traffic light to stop at (-1 for none)
         self.obstacleidx = -1       # Waypoint of last set obstacle detected (-1 for none)
 
@@ -68,11 +70,11 @@ class WaypointUpdater(object):
         if stopidx == highval:
             rospy.logdebug("Gauss - Generated forward waypoints")
             for wpt in range(index, index+LOOKAHEAD_WPS):
-                self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt, self.targetvel)
+                self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt % self.waypt_count, self.targetvel)
         else:
             rospy.logdebug("Gauss - Generated stop waypoints") #(Not really)
             for wpt in range(index, index+LOOKAHEAD_WPS):
-                self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt, self.targetvel)
+                self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt % self.waypt_count, self.targetvel)
 
         waypoints_sliced = self.base_waypoints_msg.waypoints[index:index+LOOKAHEAD_WPS]
         output_msg = Lane()
@@ -94,6 +96,7 @@ class WaypointUpdater(object):
         rospy.loginfo("Gauss - Got Waypoints")
         self.base_waypoints_msg = waypoints
         self.waypoints_positions = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in waypoints.waypoints]
+        self.waypt_count = len(self.waypoints_positions)
 
     def closest_waypoint_index(self, position, waypoints=None):
         if (not waypoints):
