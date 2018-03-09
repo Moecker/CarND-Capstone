@@ -102,12 +102,12 @@ class WaypointUpdater(object):
         return cdist([[position.x, position.y]], waypoints).argmin()
 
     def traffic_cb(self, msg):
-        if self.obstacleidx != msg.data:
-            self.obstacleidx = msg.data 
+        if self.lightidx != msg.data:
+            self.lightidx = msg.data
         
     def obstacle_cb(self, msg):
         if self.obstacleidx != msg.data:
-            self.obstacleidx = msg.data 
+            self.obstacleidx = msg.data
 
     def get_waypoint_velocity(self, waypoint):
         return waypoint.twist.twist.linear.x
