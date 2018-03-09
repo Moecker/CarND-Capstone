@@ -23,7 +23,6 @@ Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
-WAITANDSEESKIP_WPS = 50
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -44,77 +43,70 @@ class WaypointUpdater(object):
         self.base_waypoints_msg = None
         self.lightidx = -1          # Waypoint of last set traffic light to stop at (-1 for none)
         self.obstacleidx = -1       # Waypoint of last set obstacle detected (-1 for none)
-        
-        # Has something changed in the scene that we need to address?
-        self.dirty = False
-        
-        # If the scene is stale, at what progression do we allow ourselves
-        # to continue calculating more waypoints to travel?
-        self.holdoffindex = -1 
 
         self.targetvel = self.kmph2mps(rospy.get_param("/waypoint_loader/velocity"))
 
-        rospy.spin()
+        self.position = None
 
-    def pose_cb(self, msg):
-        # @done: Implement
-        x = msg.pose.position.x
-        y = msg.pose.position.y
-        rospy.loginfo("Gauss - Got Pose (x, y): " + str(x) + ", " + str(y))
+        rate = rospy.Rate(1)
+        while not rospy.is_shutdown():
+            self.update_final_waypoints()
+            rate.sleep()
 
-        if self.base_waypoints_msg is not None:
-            waypoints = self.base_waypoints_msg.waypoints
-        # should we have an else statement here? the flow continues with waypoints
-        # being unnasigned if base_waypoints_msg is None
-
-        index = self.closest_waypoint_index(msg.pose.position, waypoints)
-
-        if not self.dirty and self.holdoffindex != -1 and index < self.holdoffindex :
+    def update_final_waypoints(self):
+        if (not self.position):
             return
-            
-        self.dirty = False
+
+        if self.base_waypoints_msg:
+            index = self.closest_waypoint_index(self.position)
 
         highval = 99999999
         lightconv = highval if self.lightidx == -1 else self.lightidx
         obstcconv = highval if self.obstacleidx == -1 else self.obstacleidx
         stopidx = min(lightconv, obstcconv)
-            
+
         # TODO: More intelligent waypoints
         if stopidx == highval:
-            rospy.logdebug("Generated forward waypoints")
+            rospy.logdebug("Gauss - Generated forward waypoints")
             for wpt in range(index, index+LOOKAHEAD_WPS):
-                self.set_waypoint_velocity(waypoints, wpt, self.targetvel)
+                self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt, self.targetvel)
         else:
-            rospy.logdebug("Generated stop waypoints") #(Not really)
+            rospy.logdebug("Gauss - Generated stop waypoints") #(Not really)
             for wpt in range(index, index+LOOKAHEAD_WPS):
-                self.set_waypoint_velocity(waypoints, wpt, self.targetvel)
-        
-        waypoints_sliced = waypoints[index:index+LOOKAHEAD_WPS]
+                self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt, self.targetvel)
+
+        waypoints_sliced = self.base_waypoints_msg.waypoints[index:index+LOOKAHEAD_WPS]
         output_msg = Lane()
         output_msg.header = self.base_waypoints_msg.header
         output_msg.waypoints = waypoints_sliced
 
         rospy.loginfo("Gauss - Publishing Waypoints of length: " + str(len(output_msg.waypoints)))
         self.final_waypoints_pub.publish(output_msg)
-        self.holdoffindex = index + WAITANDSEESKIP_WPS
+
+    def pose_cb(self, msg):
+        # @done: Implement
+        self.position = msg.pose.position
+        x = self.position.x
+        y = self.position.y
+        rospy.loginfo("Gauss - Got Pose (x, y): " + str(x) + ", " + str(y))
 
     def waypoints_cb(self, waypoints):
         # @done: Implement
         rospy.loginfo("Gauss - Got Waypoints")
         self.base_waypoints_msg = waypoints
+        self.waypoints_positions = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in waypoints.waypoints]
 
-    def closest_waypoint_index(self, position, waypoints):
-        positions = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in waypoints]
-        return cdist([[position.x, position.y]], positions).argmin()
+    def closest_waypoint_index(self, position, waypoints=None):
+        if (not waypoints):
+            waypoints = self.waypoints_positions
+        return cdist([[position.x, position.y]], waypoints).argmin()
 
     def traffic_cb(self, msg):
         if self.obstacleidx != msg.data:
-            self.dirty = True
             self.obstacleidx = msg.data 
         
     def obstacle_cb(self, msg):
         if self.obstacleidx != msg.data:
-            self.dirty = True
             self.obstacleidx = msg.data 
 
     def get_waypoint_velocity(self, waypoint):
