@@ -26,7 +26,7 @@ LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this n
 
 class WaypointUpdater(object):
     def __init__(self):
-        rospy.init_node('waypoint_updater')
+        rospy.init_node('waypoint_updater', log_level=rospy.DEBUG)
         rospy.loginfo("Gauss - Started Waypoint Updater")
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
@@ -42,7 +42,7 @@ class WaypointUpdater(object):
         # @done: Add other member variables you need below
         self.base_waypoints_msg = None
         self.waypt_count = 0
-        
+
         self.lightidx = -1          # Waypoint of last set traffic light to stop at (-1 for none)
         self.obstacleidx = -1       # Waypoint of last set obstacle detected (-1 for none)
 
@@ -73,8 +73,26 @@ class WaypointUpdater(object):
                 self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt % self.waypt_count, self.targetvel)
         else:
             rospy.logdebug("Gauss - Generated stop waypoints") #(Not really)
-            for wpt in range(index, index+LOOKAHEAD_WPS):
-                self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt % self.waypt_count, self.targetvel)
+
+            all_waypoints = self.base_waypoints_msg.waypoints
+            distance_to_stop_waypoint = self.distance(all_waypoints, index, stopidx)
+            current_waypoint_velocity = self.get_waypoint_velocity(all_waypoints[index])
+            waypoints_left = stopidx - index
+
+            rospy.logdebug("Gauss - Waypoints left: " + str(waypoints_left))
+
+            target_velocity = 0.0
+            if waypoints_left > 0:
+                decrease_per_waypoint = (current_waypoint_velocity - target_velocity) / waypoints_left
+            else:
+                decrease_per_waypoint = current_waypoint_velocity
+
+            rospy.logdebug("Gauss - Decrease per waypoint: " + str(decrease_per_waypoint))
+
+            for i, wpt in enumerate(range(index, stopidx)):
+                self.set_waypoint_velocity(all_waypoints,
+                                           wpt % self.waypt_count,
+                                           current_waypoint_velocity - (decrease_per_waypoint * i))
 
         waypoints_sliced = self.base_waypoints_msg.waypoints[index:index+LOOKAHEAD_WPS]
         output_msg = Lane()
@@ -106,7 +124,7 @@ class WaypointUpdater(object):
     def traffic_cb(self, msg):
         if self.lightidx != msg.data:
             self.lightidx = msg.data
-        
+
     def obstacle_cb(self, msg):
         if self.obstacleidx != msg.data:
             self.obstacleidx = msg.data
@@ -133,4 +151,3 @@ if __name__ == '__main__':
         WaypointUpdater()
     except rospy.ROSInterruptException:
         rospy.logerr('Could not start waypoint updater node.')
-
