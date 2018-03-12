@@ -65,18 +65,6 @@ class Controller(object):
             self.pid.reset()
             return throttle, brake, steer
 
-        # @todo Consider adding those two ideas
-        # # Check whether required topics are valid, else return
-        # if not all((proposed_linear_velocity, proposed_angular_velocity, current_linear_velocity)):
-        #     rospy.loginfo("Gauss - Not all required topics have been received, resetting throttle, brake and steer")
-        #     return throttle, brake, steer
-
-        # # Reset PID if we are about to stop soon to toggle between acc and dec with same PID
-        # kMinimumSpeedUntilReset = 0.5
-        # if abs(proposed_linear_velocity) <= kMinimumSpeedUntilReset:
-        #     rospy.loginfo("Gauss - Resetting due to too low speed")
-        #     self.pid.reset()
-
         # Compute the error for the PID
         error = proposed_linear_velocity - current_linear_velocity
         rospy.loginfo("Gauss - Got error for PID: " + str(error))
