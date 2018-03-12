@@ -55,11 +55,12 @@ class DBWNode(object):
         kOneMph = 0.44704
         kMinSpeed = 0.0
 
-        kMaxBrake = 0.6
-        kMaxThrottle = 0.7
+        # Fine tuning values to comply to max acceleration and deceleration
+        kMaxBrake = 0.15
+        kMaxThrottle = 0.5
 
         total_vehicle_mass = vehicle_mass + fuel_capacity * kGasDensity
-        max_brake_torque   = kMaxBrake * total_vehicle_mass * abs(decel_limit) * wheel_radius
+        max_brake_torque = kMaxBrake * total_vehicle_mass * abs(decel_limit) * wheel_radius
 
         # Publishers (seer, throttle, brake)
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
