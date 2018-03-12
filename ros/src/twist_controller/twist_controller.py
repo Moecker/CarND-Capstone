@@ -89,7 +89,8 @@ class Controller(object):
                                                  current_linear_velocity)
 
         # Apply low pass filter on steering
-        steer = self.low_pass_filter_yaw_controller.filt(steer)
+        kSteeringFactor = 1.2
+        steer = self.low_pass_filter_yaw_controller.filt(steer) * kSteeringFactor
 
         rospy.loginfo("Gauss - Throttle: " + str(throttle))
         rospy.loginfo("Gauss - Brake: " + str(brake))
