@@ -65,18 +65,24 @@ class WaypointUpdater(object):
         lightconv = highval if self.lightidx == -1 else self.lightidx
         obstcconv = highval if self.obstacleidx == -1 else self.obstacleidx
         stopidx = min(lightconv, obstcconv)
+        end_wpt_write = index+LOOKAHEAD_WPS
 
         # TODO: More intelligent waypoints
         if stopidx == highval:
             rospy.logdebug("Gauss - Generated forward waypoints")
-            for wpt in range(index, index+LOOKAHEAD_WPS):
+            for wpt in range(index, end_wpt_write):
                 self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt % self.waypt_count, self.targetvel)
         else:
             rospy.logdebug("Gauss - Generated stop waypoints") #(Not really)
-            for wpt in range(index, index+LOOKAHEAD_WPS):
+            for wpt in range(index, end_wpt_write):
                 self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt % self.waypt_count, self.targetvel)
 
-        waypoints_sliced = self.base_waypoints_msg.waypoints[index:index+LOOKAHEAD_WPS]
+        waypoints_sliced = self.base_waypoints_msg.waypoints[index:end_wpt_write]
+        
+        # If we're adding waypoints from the end, wrap around to the beginning.
+        if end_wpt_write >= self.waypt_count:
+            waypoints_sliced += self.base_waypoints_msg.waypoints[0: end_wpt_write-self.waypt_count]
+            
         output_msg = Lane()
         output_msg.header = self.base_waypoints_msg.header
         output_msg.waypoints = waypoints_sliced
@@ -92,11 +98,16 @@ class WaypointUpdater(object):
         rospy.loginfo("Gauss - Got Pose (x, y): " + str(x) + ", " + str(y))
 
     def waypoints_cb(self, waypoints):
+        global LOOKAHEAD_WPS
         # @done: Implement
         rospy.loginfo("Gauss - Got Waypoints")
         self.base_waypoints_msg = waypoints
         self.waypoints_positions = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in waypoints.waypoints]
         self.waypt_count = len(self.waypoints_positions)
+        # In the highly unlikely situation that we have a higher
+        # LOOKAHEAD_WPS than waypoints, the wrap-around writing of
+        # waypoints would start overwriting itself.
+        LOOKAHEAD_WPS = min(LOOKAHEAD_WPS, self.waypt_count)
 
     def closest_waypoint_index(self, position, waypoints=None):
         if (not waypoints):
