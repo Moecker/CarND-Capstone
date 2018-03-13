@@ -11,6 +11,8 @@ import tf
 import cv2
 import yaml
 from scipy.spatial.distance import cdist
+import os
+import time
 
 STATE_COUNT_THRESHOLD = 3
 LIGHT_LOCATION_THRESHOLD = 30 # meters, for comparing real position to known position of traffic lights
@@ -53,6 +55,8 @@ class TLDetector(object):
 
         # List of positions that correspond to the line to stop in front of for a given intersection
         self.stop_line_positions = self.config['stop_line_positions']
+
+        self.image_counts = {0: 0, 1: 0, 2: 0, 4: 0}
 
         rospy.spin()
 
@@ -149,13 +153,27 @@ class TLDetector(object):
             closest_stop_line_index = self.get_closest_waypoint(self.pose.pose.position, self.stop_line_positions)
             closest_stop_line = self.stop_line_positions[closest_stop_line_index]
             light_wp = self.get_closest_waypoint(Point(closest_stop_line[0], closest_stop_line[1], 0))
-            if car_position < light_wp and light_wp - car_position < 100: # assume visibility is 100 meters
+            if car_position <= light_wp and light_wp - car_position < 100: # assume visibility is 100 meters
                 for real_light in self.lights:
                     light_position = real_light.pose.pose.position
                     light_x_approx = abs(light_position.x - closest_stop_line[0]) < LIGHT_LOCATION_THRESHOLD
                     light_y_approx = abs(light_position.y - closest_stop_line[1]) < LIGHT_LOCATION_THRESHOLD
                     if light_x_approx and light_y_approx:
                         light = real_light
+
+        state = TrafficLight.UNKNOWN
+        if light:
+            state = light.state
+
+        if self.image_counts[state] < 5000:
+            # Save to disk
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "capture", str(state))
+            if (not os.path.isdir(path)):
+                os.makedirs(path)
+            name = str(time.time()) + '.png'
+            cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+            cv2.imwrite(os.path.join(path, name), cv_image)
+            self.image_counts[state] += 1
 
         if light:
             state = self.get_light_state(light)
