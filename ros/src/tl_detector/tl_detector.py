@@ -142,6 +142,8 @@ class TLDetector(object):
 
         """
         light = None
+        
+        visibility_range = 100
 
         # @done find the closest visible traffic light (if one exists)
         if(self.pose and self.waypoints):
@@ -149,7 +151,7 @@ class TLDetector(object):
             closest_stop_line_index = self.get_closest_waypoint(self.pose.pose.position, self.stop_line_positions)
             closest_stop_line = self.stop_line_positions[closest_stop_line_index]
             light_wp = self.get_closest_waypoint(Point(closest_stop_line[0], closest_stop_line[1], 0))
-            if car_position < light_wp and light_wp - car_position < 100: # assume visibility is 100 meters
+            if car_position < light_wp and light_wp - car_position < visibility_range:
                 for real_light in self.lights:
                     light_position = real_light.pose.pose.position
                     light_x_approx = abs(light_position.x - closest_stop_line[0]) < LIGHT_LOCATION_THRESHOLD
