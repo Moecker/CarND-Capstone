@@ -72,7 +72,8 @@ class Controller(object):
         pid_result = self.pid.step(error=error, sample_time=1.0/50.0)
         rospy.loginfo("Gauss - PID Result: " + str(pid_result))
 
-        if pid_result >= 0.0:
+        stopdeadzone = 0.5
+        if pid_result >= 0.0 and proposed_linear_velocity >= stopdeadzone:
             # We want to accelerate
             throttle = self.scale(pid_result, self.max_throttle)
             brake = 0.0

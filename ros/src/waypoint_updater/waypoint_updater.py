@@ -26,7 +26,7 @@ LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this n
 
 class WaypointUpdater(object):
     def __init__(self):
-        rospy.init_node('waypoint_updater')
+        rospy.init_node('waypoint_updater', log_level=rospy.DEBUG)
         rospy.loginfo("Gauss - Started Waypoint Updater")
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
@@ -66,23 +66,27 @@ class WaypointUpdater(object):
         obstcconv = highval if self.obstacleidx == -1 else self.obstacleidx
         stopidx = min(lightconv, obstcconv)
         end_wpt_write = index+LOOKAHEAD_WPS
+        all_waypoints = self.base_waypoints_msg.waypoints
+        current_waypoint_velocity = self.get_waypoint_velocity(all_waypoints[index])
 
-        # TODO: More intelligent waypoints
-        if stopidx == highval:
-            rospy.logdebug("Gauss - Generated forward waypoints")
-            for wpt in range(index, end_wpt_write):
-                self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt % self.waypt_count, self.targetvel)
+        if stopidx-index>0 and stopidx-index<20:
+        	rospy.logdebug("Gauss - Generated stop waypoints")
+        	distance_to_stop = self.distance(all_waypoints, index, stopidx)-5
+        	accel = abs (current_waypoint_velocity**2/(2*distance_to_stop))
+
+        	for i, wpt in enumerate(range(index,stopidx)):
+        		target_velocity = max(0, current_waypoint_velocity-(i*accel))
+        		self.set_waypoint_velocity(all_waypoints, wpt % self.waypt_count, target_velocity)
+
         else:
-            rospy.logdebug("Gauss - Generated stop waypoints") #(Not really)
-            for wpt in range(index, end_wpt_write):
-                self.set_waypoint_velocity(self.base_waypoints_msg.waypoints, wpt % self.waypt_count, self.targetvel)
+        	rospy.logdebug("Gauss - Generated forward waypoints")
+        	for wpt in range(index, end_wpt_write):
+        		self.set_waypoint_velocity(all_waypoints, wpt % self.waypt_count, self.targetvel)
 
-        waypoints_sliced = self.base_waypoints_msg.waypoints[index:end_wpt_write]
-        
-        # If we're adding waypoints from the end, wrap around to the beginning.
+        waypoints_sliced = self.base_waypoints_msg.waypoints[index:index+LOOKAHEAD_WPS]
         if end_wpt_write >= self.waypt_count:
-            waypoints_sliced += self.base_waypoints_msg.waypoints[0: end_wpt_write-self.waypt_count]
-            
+            waypoints_sliced += self.base_waypoints_msg.waypoints[0: end_wpt_write - self.waypt_count]
+        
         output_msg = Lane()
         output_msg.header = self.base_waypoints_msg.header
         output_msg.waypoints = waypoints_sliced
