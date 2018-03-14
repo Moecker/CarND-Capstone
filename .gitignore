@@ -1,0 +1,14 @@
+*.py[cod]
+
+build
+devel
+
+profile.tmp
+
+# Ignores for CLion
+.idea
+cmake-build-debug
+traffic_light_training.bag
+brakes.csv
+steers.csv
+throttles.csv
