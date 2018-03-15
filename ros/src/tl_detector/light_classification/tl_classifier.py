@@ -25,6 +25,10 @@ class TLClassifier(object):
         self.model = SSD300(input_shape, num_classes=NUM_CLASSES)
         self.model.load_weights('/home/student/.ros/weights.180314.hdf5', by_name=True)
 
+        dummy = np.zeros((1, 300, 300, 3))
+        _ = self.model.predict(dummy, batch_size=1, verbose=0)
+
+
     def get_classification(self, img):
         """Determines the color of the traffic light in the image
 
