@@ -23,6 +23,9 @@ Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+SMOOTH_STOP = 70
+SAFE_STOP = 3
+
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -61,7 +64,7 @@ class WaypointUpdater(object):
 
         index = self.closest_waypoint_index(self.position)
 
-        highval = 99999999
+        highval = 999999999
         lightconv = highval if self.lightidx == -1 else self.lightidx
         obstcconv = highval if self.obstacleidx == -1 else self.obstacleidx
         stopidx = min(lightconv, obstcconv)
@@ -69,21 +72,27 @@ class WaypointUpdater(object):
         all_waypoints = self.base_waypoints_msg.waypoints
         current_waypoint_velocity = self.get_waypoint_velocity(all_waypoints[index])
 
-        if stopidx-index>0 and stopidx-index<20:
-        	rospy.logdebug("Gauss - Generated stop waypoints")
-        	distance_to_stop = self.distance(all_waypoints, index, stopidx)-5
-        	accel = abs (current_waypoint_velocity**2/(2*distance_to_stop))
+	if stopidx!=highval:
+	    distance_to_stop = self.distance(all_waypoints, index, stopidx)
+	    if distance_to_stop > SAFE_STOP and distance_to_stop < SMOOTH_STOP:
+		accel = current_waypoint_velocity**2/2*distance_to_stop
 
-        	for i, wpt in enumerate(range(index,stopidx)):
-        		target_velocity = max(0, current_waypoint_velocity-(i*accel))
-        		self.set_waypoint_velocity(all_waypoints, wpt % self.waypt_count, target_velocity)
+		for i, wpt in enumerate(range(index, end_wpt_write)):
+		    target_velocity = max(0, current_waypoint_velocity-(i*accel))
+		    self.set_waypoint_velocity(all_waypoints, wpt % self.waypt_count, target_velocity)
 
-        else:
-        	rospy.logdebug("Gauss - Generated forward waypoints")
-        	for wpt in range(index, end_wpt_write):
-        		self.set_waypoint_velocity(all_waypoints, wpt % self.waypt_count, self.targetvel)
+	    elif distance_to_stop < SAFE_STOP:
+		for wpt in range(index, end_wpt_write):
+		    target_velocity = 0
+		    self.set_waypoint_velocity(all_waypoints, wpt % self.waypt_count, target_velocity)
 
-        waypoints_sliced = self.base_waypoints_msg.waypoints[index:index+LOOKAHEAD_WPS]
+	else:
+	    for wpt in range(index, end_wpt_write):
+		target_velocity = self.targetvel
+		self.set_waypoint_velocity(all_waypoints, wpt % self.waypt_count, target_velocity)
+
+
+	waypoints_sliced = self.base_waypoints_msg.waypoints[index:index+LOOKAHEAD_WPS]
         if end_wpt_write >= self.waypt_count:
             waypoints_sliced += self.base_waypoints_msg.waypoints[0: end_wpt_write - self.waypt_count]
         
