@@ -32,6 +32,10 @@ class TLClassifier(object):
         _ = self.model.predict(dummy, batch_size=1, verbose=0)
 
 
+        dummy = np.zeros((1, 300, 300, 3))
+        _ = self.model.predict(dummy, batch_size=1, verbose=0)
+
+
     def get_classification(self, img):
         """Determines the color of the traffic light in the image
 
