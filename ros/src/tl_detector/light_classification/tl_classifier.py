@@ -79,4 +79,3 @@ class TLClassifier(object):
             return TrafficLight.GREEN
         else:
             return TrafficLight.UNKNOWN
-
