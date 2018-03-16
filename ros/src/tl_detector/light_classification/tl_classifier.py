@@ -11,21 +11,24 @@ from ssd import SSD300
 from ssd_utils import BBoxUtility
 
 from styx_msgs.msg import TrafficLight
-
+import os
+import datetime
 
 class TLClassifier(object):
     def __init__(self):
         NUM_CLASSES = 3 + 1
         input_shape = (300, 300, 3)
 
+        # get path to resources
+        path_to_resources = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', 'tlc')
         # "prior boxes" in the paper
-        priors = pickle.load(open('/home/student/.ros/prior_boxes_ssd300.pkl', 'rb'))
+        priors = pickle.load(open(os.path.join(path_to_resources, 'prior_boxes_ssd300.pkl'), 'rb'))
         self.bbox_util = BBoxUtility(NUM_CLASSES, priors)
 
         # Traffic Light Classifier model and its weights
         self.model = SSD300(input_shape, num_classes=NUM_CLASSES)
-        self.model.load_weights('/home/student/.ros/weights.180316sim.hdf5', by_name=True)
-        #self.model.load_weights('/home/student/.ros/weights.180314.hdf5', by_name=True)
+        self.model.load_weights(os.path.join(path_to_resources, 'weights.180316sim.hdf5'), by_name=True)
+        #self.model.load_weights(os.path.join(path_to_resources, 'weights.180314.hdf5'), by_name=True)
 
         # prevent TensorFlow's ValueError when no raised backend
         dummy = np.zeros((1, 300, 300, 3))
@@ -69,6 +72,7 @@ class TLClassifier(object):
         if top_label_indices == []:
             return TrafficLight.UNKNOWN
         label = int(top_label_indices[0])
+        print "Found label " + str(label) + " at " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if label == 0:
             return TrafficLight.UNKNOWN
         elif label == 1:
