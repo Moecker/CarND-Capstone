@@ -32,6 +32,7 @@ class TLClassifier(object):
         _ = self.model.predict(dummy, batch_size=1, verbose=0)
 
 
+        # prevent TensorFlow's ValueError when no raised backend
         dummy = np.zeros((1, 300, 300, 3))
         _ = self.model.predict(dummy, batch_size=1, verbose=0)
 
