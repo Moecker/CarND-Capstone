@@ -15,7 +15,6 @@ from styx_msgs.msg import TrafficLight
 
 class TLClassifier(object):
     def __init__(self):
-        #TODO load classifier
         NUM_CLASSES = 3 + 1
         input_shape = (300, 300, 3)
 
@@ -25,7 +24,8 @@ class TLClassifier(object):
 
         # Traffic Light Classifier model and its weights
         self.model = SSD300(input_shape, num_classes=NUM_CLASSES)
-        self.model.load_weights('/home/student/.ros/weights.180314.hdf5', by_name=True)
+        self.model.load_weights('/home/student/.ros/weights.180316sim.hdf5', by_name=True)
+        #self.model.load_weights('/home/student/.ros/weights.180314.hdf5', by_name=True)
 
         # prevent TensorFlow's ValueError when no raised backend
         dummy = np.zeros((1, 300, 300, 3))
