@@ -1,7 +1,8 @@
 # Introduction
 This write-up summarizes the approach, implementation and results of the SDC Capstone project.
+We first will introduce the team members, followed by a deep dive into the implementation for each component, and finally summarizing the results and give a retrospective.
 
-[Original Udacity Readme](README_Udacity.md)
+Link to [Original Udacity Readme](README_Udacity.md)
 
 # Team Gauss
 ## Team Members
@@ -20,8 +21,16 @@ William Leu | reavenk@gmail.com | @reavenk
 ## Waypoint Updater
 ### Basic Updater
 The basic implementation of the waypoint updater subscribes to the `/base_waypoints` and `/current_pose` topics and publishes the next 200 waypoints, starting from the ego position to the topic `/final_waypoints`.
+To do so, the waypoint updater node searches for the closest waypoint with respect to our current position. Once the index within the base waypoints array has been found, we slice the waypoints to a maximum of 200 and publish those using the final waypoints topic.
+The actual content of each waypoint include the pose (position and orientation) and twist (linear and angular velocities).
+The desired longitudinal speed is set to the target speed obtained from `/waypoint_loader/velocity` parameter which is eventually consumed by the waypoint follower (not part of the project tasks).
+
+Since this approach ignores obstacles and traffic lights, an improvement has been developed which also takes stop points into account.
 
 ### Full Updater
+The full updater enhances the basic updater by enabling the car to vary its speed and allowing to stop in front of traffic lights.
+The major change is that the target velocity is not constant anymore but derived from the target stop point.
+A target stop point can be a red traffic light as obtained from the traffic light detection node.
 
 ## Drive By Wire
 The drive by wire node is responsible for turning desired velocities into actual commands, like braking and steering, the car can understand.
@@ -65,11 +74,30 @@ Also here, the provided yaw controller suffices our needs and was used straight 
 ### Traffic Light Classification
 
 # Results
-## Video
-[![Video](https://img.youtube.com/vi/pWww_Oiqx8U/0.jpg)](https://www.youtube.com/watch?v=pWww_Oiqx8U)
+## Videos
+Description | Link
+--- | ---
+Driving on the test lot simulation scenario without camera and traffic light info  | [![Video](https://img.youtube.com/vi/K93AdV7zbSs/0.jpg)](https://www.youtube.com/watch?v=K93AdV7zbSs)
+Driving on the highway simulation scenario ignoring traffic lights with temporary manual override  | [![Video](https://img.youtube.com/vi/VR0Se5eRiIc/0.jpg)](https://www.youtube.com/watch?v=VR0Se5eRiIc)
 
 # Retrospective
 ## Team Collaboration
+Team communication primarily was done in our Slack channel, because it allowed for persistent and delayed communication.
+We set up meeting dates for summarizing our progress. Challenging was to overcome the huge time zone differences, since team members were spread around the world (America, Europe, Asia).
+
+We used a common code base hosted on [Github](https://github.com/Moecker/sdc_capstone) with granted rights to push directly to master for all team members, avoiding delayed integration if pull requests would have be used.
+For feature development, personal or collaborative branches (i.e. for the traffic light classifier) were created and later merged into the master.
+
+The tasks break down followed the advice given in the classroom and manifested into this Write-up structure.
+We could benefit from the decoupled, component oriented architecture provided by ROS and its powerful tools for faking messages by having clear interfaces between nodes. Although every team member was assigned for a particular task as the "driver", the implementation was done collaboratively.
+
+The task break down was chosen like so:
+1. Waypoint Updater Node (Partial): Complete a partial waypoint updater.
+2. DBW Node: After completing this step, the car should drive in the simulator, ignoring the traffic lights.
+3. Traffic Light Detection: Detect the traffic light and its color from the /image_color.
+4. Waypoint publishing: Once you have correctly identified the traffic light and determined its position, you can convert it to a waypoint index and publish it.
+5. Waypoint Updater (Full): Your car should now stop at red traffic lights and move when they are green.
+
 ## Improvements
 * Performance of the entire chain
 * Follow the waypoints more smoothly
