@@ -18,7 +18,15 @@ William Leu | reavenk@gmail.com | @reavenk
 [Link](https://carnd.slack.com/messages/G9GQ610TH/)
 
 # Project Documentation
+## Architecture
+
+![Component Diagram](imgs/integration_component_diagram.png)
+
 ## Waypoint Updater
+The waypoint updater decides which waypoints from the static map are published to the waypoint follower and adapts its velocity according to obstacles.
+
+![Waypoint Updater](imgs/waypoint-updater-ros-graph.png)
+
 ### Basic Updater
 The basic implementation of the waypoint updater subscribes to the `/base_waypoints` and `/current_pose` topics and publishes the next 200 waypoints, starting from the ego position to the topic `/final_waypoints`.
 To do so, the waypoint updater node searches for the closest waypoint with respect to our current position. Once the index within the base waypoints array has been found, we slice the waypoints to a maximum of 200 and publish those using the final waypoints topic.
@@ -38,6 +46,8 @@ In addition, it needs to decide whether the DBW system shall get activated or no
 For safety reasons, the DBW system only published actuator commands when the system is intended to be active.
 
 The controller task can be divided into two tasks: longitudinal and lateral control.
+
+![Drive By Wire](imgs/dbw-node-ros-graph.png)
 
 ### Longitudinal Controller
 There is a PID implementation used for the longitudinal control which maintains the speed of the vehicle.
@@ -70,6 +80,9 @@ To further smooth the control, a the same low pass filter as used for the brakin
 Also here, the provided yaw controller suffices our needs and was used straight away.
 
 ## Traffic Light detection
+
+![Traffic Light detection](imgs/tl-detector-ros-graph.png)
+
 ### Traffic Light Recognition
 ### Traffic Light Classification
 
