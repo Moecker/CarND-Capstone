@@ -34,7 +34,7 @@ class Controller(object):
     def __init__(self, pid_controller_properties, yaw_controller_properties, lowpass_filter_properties):
 
         # @done Find suitable values for PID properties
-        self.pid = PID(kp=0.5, ki=0.01, kd=0.001,
+        self.pid = PID(kp=2.0, ki=0.05, kd=0.005,
                        mn=pid_controller_properties.decel_limit,
                        mx=pid_controller_properties.accel_limit)
 

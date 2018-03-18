@@ -25,8 +25,8 @@ as well as to verify your TL classifier.
 Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
-kComfortBraking = 2.0 # m/s**2
+kLookAheadWaypoints = 200 # Number of waypoints we will publish. You can change this number
+kComfortBraking = 1.5 # m/s**2
 kFullStopDistance = 2.0
 
 class WaypointUpdater(object):
@@ -71,7 +71,7 @@ class WaypointUpdater(object):
         obstcconv = highval if self.obstacleidx == -1 else self.obstacleidx
 
         stopidx = min(lightconv, obstcconv)
-        end_wpt_write = index+LOOKAHEAD_WPS
+        end_wpt_write = index+kLookAheadWaypoints
 
         all_waypoints = self.base_waypoints_msg.waypoints
         current_waypoint_velocity = self.get_waypoint_velocity(all_waypoints[index])
@@ -82,8 +82,8 @@ class WaypointUpdater(object):
             rospy.logdebug("Stop - Distance to stop: " + str(distance_to_stop))
 
             current_actual_velocity = self.current_velocity
-            distance_to_start_braking_wrt_waypoint_velocity = current_waypoint_velocity**2 / kComfortBraking
-            distance_to_start_braking_wrt_actual_velocity = current_actual_velocity**2 / kComfortBraking
+            distance_to_start_braking_wrt_waypoint_velocity = 0.5 * (current_waypoint_velocity**2) / kComfortBraking
+            distance_to_start_braking_wrt_actual_velocity = 0.5 * (current_actual_velocity**2) / kComfortBraking
             distance_to_start_braking = max(distance_to_start_braking_wrt_waypoint_velocity,
                                             distance_to_start_braking_wrt_actual_velocity)
             rospy.logdebug("Stop - Distance to start braking: " + str(distance_to_start_braking))
@@ -91,11 +91,11 @@ class WaypointUpdater(object):
             diff_in_waypoint_indices = max(0, stopidx - index)
             rospy.logdebug("Stop - Diff in waypoint indices: " + str(diff_in_waypoint_indices))
 
-            max_allowed_speed = math.sqrt(kComfortBraking * distance_to_stop)
+            max_allowed_speed = math.sqrt(2.0 * kComfortBraking * distance_to_stop)
             rospy.logdebug("Stop - Max allowed speed: " + str(max_allowed_speed))
 
             if (diff_in_waypoint_indices != 0):
-                if distance_to_stop < distance_to_start_braking:
+                if distance_to_stop <= distance_to_start_braking:
                     diff_in_velocity = current_waypoint_velocity / diff_in_waypoint_indices
                     rospy.logdebug("Stop - Diff in velocity: " + str(diff_in_velocity))
 
@@ -104,16 +104,21 @@ class WaypointUpdater(object):
                             target_velocity = min(max_allowed_speed, current_waypoint_velocity - ((i+1) * diff_in_velocity))
                         else:
                             target_velocity = 0.0
-                        rospy.logdebug("Stop - Target Velocity: " + str(target_velocity))
+                        rospy.logdebug("Stop - Target velocity: " + str(target_velocity))
                         self.set_waypoint_velocity(all_waypoints, wpt % self.waypt_count, target_velocity)
+            else:
+                # We passed the traffic light, perform a full brake
+                target_velocity = 0.0
+                for wpt in range(index, stopidx):
+                    self.set_waypoint_velocity(all_waypoints, wpt % self.waypt_count, target_velocity)
+                    rospy.logdebug("Stop - Performing full brake: " + str(target_velocity))
 
         else:
             for wpt in range(index, end_wpt_write):
                 target_velocity = self.targetvel
                 self.set_waypoint_velocity(all_waypoints, wpt % self.waypt_count, target_velocity)
 
-
-        waypoints_sliced = self.base_waypoints_msg.waypoints[index:index+LOOKAHEAD_WPS]
+        waypoints_sliced = self.base_waypoints_msg.waypoints[index:index+kLookAheadWaypoints]
         if end_wpt_write >= self.waypt_count:
             waypoints_sliced += self.base_waypoints_msg.waypoints[0: end_wpt_write - self.waypt_count]
 
@@ -137,7 +142,7 @@ class WaypointUpdater(object):
 
 
     def waypoints_cb(self, waypoints):
-        global LOOKAHEAD_WPS
+        global kLookAheadWaypoints
 
         rospy.logdebug("Gauss - Got Waypoints")
         self.base_waypoints_msg = waypoints
@@ -145,9 +150,9 @@ class WaypointUpdater(object):
         self.waypt_count = len(self.waypoints_positions)
 
         # In the highly unlikely situation that we have a higher
-        # LOOKAHEAD_WPS than waypoints, the wrap-around writing of
+        # kLookAheadWaypoints than waypoints, the wrap-around writing of
         # waypoints would start overwriting itself.
-        LOOKAHEAD_WPS = min(LOOKAHEAD_WPS, self.waypt_count)
+        kLookAheadWaypoints = min(kLookAheadWaypoints, self.waypt_count)
 
 
     def closest_waypoint_index(self, position, waypoints=None):
