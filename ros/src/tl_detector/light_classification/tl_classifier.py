@@ -66,6 +66,10 @@ class TLClassifier(object):
         inputs = preprocess_input(np.array(inputs))
         preds = self.model.predict(inputs, batch_size=1, verbose=0)
         results = self.bbox_util.detection_out(preds)
+
+        if results == None or results == [] or results == [[]]:
+            return TrafficLight.UNKNOWN
+
         det_label = results[0][:, 0]
         det_conf = results[0][:, 1]
 
