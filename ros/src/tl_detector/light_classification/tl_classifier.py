@@ -44,6 +44,9 @@ class TLClassifier(object):
         dummy = np.zeros((1, 300, 300, 3))
         _ = self.model.predict(dummy, batch_size=1, verbose=0)
 
+        self.is_in_progress = False
+        self.last_result = TrafficLight.UNKNOWN
+
 
     def get_classification(self, img):
         """Determines the color of the traffic light in the image
@@ -55,6 +58,10 @@ class TLClassifier(object):
         Returns:
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
         """
+
+        if self.is_in_progress:
+            return self.last_result
+        self.is_in_progress = True
 
         # adjust img arg for the model
         pilImg = Image.fromarray(np.uint8(img)).resize((300, 300))
@@ -68,7 +75,9 @@ class TLClassifier(object):
         results = self.bbox_util.detection_out(preds)
 
         if results == None or results == [] or results == [[]]:
-            return TrafficLight.UNKNOWN
+            self.last_result = TrafficLight.UNKNOWN
+            self.is_in_progress = False
+            return self.last_result
 
         det_label = results[0][:, 0]
         det_conf = results[0][:, 1]
@@ -79,16 +88,19 @@ class TLClassifier(object):
 
         # return the first signal detected
         if top_label_indices == []:
-            return TrafficLight.UNKNOWN
+            self.last_result = TrafficLight.UNKNOWN
+            self.is_in_progress = False
+            return self.last_result
         label = int(top_label_indices[0])
         #print "Found label " + str(label) + " at " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        if label == 0:
-            return TrafficLight.UNKNOWN
-        elif label == 1:
-            return TrafficLight.RED
+        if label == 1:
+            self.last_result = TrafficLight.RED
         elif label == 2:
-            return TrafficLight.YELLOW
+            self.last_result = TrafficLight.YELLOW
         elif label == 3:
-            return TrafficLight.GREEN
+            self.last_result = TrafficLight.GREEN
         else:
-            return TrafficLight.UNKNOWN
+            self.last_result = TrafficLight.UNKNOWN
+
+        self.is_in_progress = False
+        return self.last_result
