@@ -56,8 +56,8 @@ class DBWNode(object):
         kMinSpeed = 0.0
 
         # Fine tuning values to comply to max acceleration and deceleration
-        kMaxBrake = 0.15
-        kMaxThrottle = 0.5
+        kMaxBrake = 0.25
+        kMaxThrottle = 0.75
 
         total_vehicle_mass = vehicle_mass + fuel_capacity * kGasDensity
         max_brake_torque = kMaxBrake * total_vehicle_mass * abs(decel_limit) * wheel_radius
