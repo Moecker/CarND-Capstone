@@ -13,11 +13,17 @@ from ssd_utils import BBoxUtility
 from styx_msgs.msg import TrafficLight
 import os
 import datetime
+import rospy
+import yaml
 
 class TLClassifier(object):
     def __init__(self):
         NUM_CLASSES = 3 + 1
         input_shape = (300, 300, 3)
+
+        config_string = rospy.get_param("/traffic_light_config")
+        self.config = yaml.load(config_string)
+        self.stop_line_positions = self.config['stop_line_positions']
 
         # get path to resources
         path_to_resources = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', 'tlc')
@@ -27,8 +33,7 @@ class TLClassifier(object):
 
         # Traffic Light Classifier model and its weights
         self.model = SSD300(input_shape, num_classes=NUM_CLASSES)
-        self.model.load_weights(os.path.join(path_to_resources, 'weights.180318sim.hdf5'), by_name=True)
-        #self.model.load_weights(os.path.join(path_to_resources, 'weights.180314.hdf5'), by_name=True)
+        self.model.load_weights(os.path.join(path_to_resources, self.config['classifier_weights_file']), by_name=True)
 
         # prevent TensorFlow's ValueError when no raised backend
         dummy = np.zeros((1, 300, 300, 3))
@@ -72,7 +77,7 @@ class TLClassifier(object):
         if top_label_indices == []:
             return TrafficLight.UNKNOWN
         label = int(top_label_indices[0])
-        print "Found label " + str(label) + " at " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        #print "Found label " + str(label) + " at " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if label == 0:
             return TrafficLight.UNKNOWN
         elif label == 1:
