@@ -39,6 +39,12 @@ Since this approach ignores obstacles and traffic lights, an improvement has bee
 The full updater enhances the basic updater by enabling the car to vary its speed and allowing to stop in front of traffic lights.
 The major change is that the target velocity is not constant anymore but derived from the target stop point.
 A target stop point can be a red traffic light as obtained from the traffic light detection node.
+The information comes in a form of a global waypoint index at which the car is about to stop. A `-1` indicates no need for a stop (either no traffic light or a green one).
+
+To come to a smooth and safe stop in front of a red traffic light, a target velocity trajectory is generated with a linear decrease of speed from the current waypoint velocity to zero. We define the notion of a "comfort braking" with an approximate deceleration of `1.5 m/s^2`.
+This is the basis to calculate the distance at which a deceleration maneuver is started to gain a smooth braking.
+In addition, a maximum allowed velocity is derived from the comfort braking deceleration value at which we actually achieve a full stop.
+If the current velocity tops the maximum velocity, we allow for a "progressive braking" which decelerates faster until we reach the max allowed speed.
 
 ## Drive By Wire
 The drive by wire node is responsible for turning desired velocities into actual commands, like braking and steering, the car can understand.
@@ -92,6 +98,7 @@ Description | Link
 --- | ---
 Driving on the test lot simulation scenario without camera and traffic light info  | [![Video](https://img.youtube.com/vi/K93AdV7zbSs/0.jpg)](https://www.youtube.com/watch?v=K93AdV7zbSs)
 Driving on the highway simulation scenario ignoring traffic lights with temporary manual override  | [![Video](https://img.youtube.com/vi/VR0Se5eRiIc/0.jpg)](https://www.youtube.com/watch?v=VR0Se5eRiIc)
+Driving on the highway simulation scenario adhering to red traffic light (state directly taken from simulator)  | [![Video](https://img.youtube.com/vi/qFJfD4xo16s/0.jpg)](https://www.youtube.com/watch?v=qFJfD4xo16s)
 
 # Retrospective
 ## Team Collaboration
