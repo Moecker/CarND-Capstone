@@ -5,4 +5,4 @@ camera_info:
   image_height: 600
 stop_line_positions:
     - [8.0, 16.2]
-classifier_weights_file: "weights.180314.hdf5"
+classifier_weights_file: "weights.180319.hdf5"
