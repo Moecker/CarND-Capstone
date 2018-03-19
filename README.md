@@ -113,6 +113,28 @@ The problem of traffic light detection is split in two main parts:
 ### Traffic Light Recognition
 ### Traffic Light Classification
 
+Traffic Light Classification performs on demand from the traffic light detection and returns the color state of the traffic light reflected in the camera image with a constant value in TrafficLight.
+The traffic light classification solves two tasks.
+
+  - find traffic lights as bounding boxes in the camera image
+  - predict the color states of the traffic lights detected
+
+Deep Learning is a successful technique to solve them at once. The traffic light classification applies SSD:Single Shot Multibox Detector which is one of the powerful deep learning algorithms.
+To classify the color state, the traffic light classification does:
+
+   1. resize camera image to (300, 300) for the SSD
+   2. utilize the SSD and predict traffic lights with their color state, confidence and boundary box
+   3. get detections with the confidence is larger than 0.6
+   4. return the color state of the top of the detection list
+
+The color state values are defined in TrafficLight class as below.
+
+  - TrafficLight.RED
+  - TrafficLight.YELLOW
+  - TrafficLight.GREEN
+  - TrafficLight.UNKNOWN
+
+
 # Results
 ## Videos
 Description | Link
