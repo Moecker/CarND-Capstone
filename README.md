@@ -113,7 +113,7 @@ The problem of traffic light detection is split in two main parts:
 ### Traffic Light Recognition
 ### Traffic Light Classification
 
-Traffic Light Classification performs on demand from the traffic light detection and returns the color state of the traffic light reflected in the camera image with a constant value in TrafficLight.
+Traffic Light Classification performs on demand from the traffic light detection and returns the color state of the traffic light reflected in the camera image with a constant value in TrafficLight class.
 The traffic light classification solves two tasks.
 
   - find traffic lights as bounding boxes in the camera image
