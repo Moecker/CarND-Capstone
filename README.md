@@ -106,18 +106,23 @@ The traffic light detection node's computation will be output to the `/traffic_w
 
 ![Traffic Light detection](imgs/tl-detector-ros-graph.png)
 
-The problem of traffic light detection is split in two main parts:
+Note that this node also subscribes to the `/vehicle/traffic_lights` topic, which during development time is used to obtain "ground truth" data about the state of the traffic lights. This enabled the team to continue working on downstream processes as if the classifier was functional while other team members worked on the classification problem.
+
+The traffic light detection node is split in two main parts:
   1. Traffic light recognition: in regards to the known data (such as traffic light locations) and the vehicle's state.
   2. Traffic light classification: in regards to the image obtained from the vehicle's dash camera.
 
 ### Traffic Light Recognition
+Traffic light recognition is done in [`tl_detector.py`](./ros/src/tl_detector/tl_detector.py). The first step to the traffic light recognition process is the subscription to the `/current_pose` and `/base_waypoints` topics. Whenever we get messages in these topics we simply store the value in a class varible.
+
+By subscribing to the `/image_color` topic we ensure we get a constant flow of images from the vehicle's dash cam. This is the entry-point to our recognition process. Each time an image enters the process we calculate which is the closest traffic light to the vehicle's current location, based on our knowledge of where traffic lights should be. Once we know which light is closest to the vehicle, we verify whether the light is within visibility, simply by comparing the location of the vehicle (in waypoint index) against the location of the traffic light. If they're close enough, we initiate traffic light classification with the image.
+
 ### Traffic Light Classification
+Traffic light classification is done in [`tl_classifier.py`](./ros/src/tl_detector/light_classification/tl_classifier.py). It executes on-demand based on the traffic light recognition, and returns the color state of the traffic light reflected in the camera image, expressed with a value taken from the TrafficLight class.
 
-Traffic Light Classification performs on demand from the traffic light detection and returns the color state of the traffic light reflected in the camera image with a constant value in TrafficLight class.
 The traffic light classification solves two tasks.
-
-  - find traffic lights as bounding boxes in the camera image
-  - predict the color states of the traffic lights detected
+  - Find traffic lights as bounding boxes in the camera image
+  - Predict the color states of the traffic lights detected
 
 Deep Learning is a successful technique to solve them at once. The traffic light classification applies SSD:Single Shot Multibox Detector which is one of the powerful deep learning algorithms.
 To classify the color state, the traffic light classification does:
