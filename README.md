@@ -87,7 +87,28 @@ Also here, the provided yaw controller suffices our needs and was used straight 
 
 ## Traffic Light detection
 
+Traffic light detection is done whenever the vehicle approaches points known to have traffic lights. The purpose is simple: detect via optical analysis what the state of the traffic light is. If the traffic light is found to be red, this will be notified to other nodes so they can initiate a stopping maneuver. The output of this node is simply an integer number which will tell which of the base waypoints ahead of us has a stop sign in display. If no stop sign is ahead of us, then the special value `-1` is sent to the topic.
+
+The vehicle, both in the simulator as well as Udacity's Carla, has a camera mounted in the front side of the dash so as to obtain color images that are fed to the traffic light detection node. The camera images are only processed when the car is in the vicinity of a known location of a traffic light. 
+
+Traffic light locations are specified in configuration files to ROS, located in the [traffic light detection directory](./ros/src/tl_detector).
+  - `sim_traffic_light_config.yaml` is used for the highway simulator,
+  - `site_traffic_light_config.yaml` is used for Carla in the real world, and for the parking lot simulator.
+
+Besides containing the traffic light location in the known map, the configuration files contains relevant data regarding camera configuration and file names for the weights to be used in our traffic light classification neural network.
+
+Finally, the traffic light detection node could not operate without consuming streams from the following topics:
+  - `/current_pose`: used in order to obtain the vehicle's current position in the map.
+  - `/base_waypoints`: used in order to calculate the closest waypoints to the vehicle's current position. Also, the output of this node is an index number to the base waypoints.
+  - `/image_color`: used in order to obtain a snapshot image from the vehicle's dash camera.
+
+The traffic light detection node's computation will be output to the `/traffic_waypoint` topic.
+
 ![Traffic Light detection](imgs/tl-detector-ros-graph.png)
+
+The problem of traffic light detection is split in two main parts:
+  1. Traffic light recognition: in regards to the known data (such as traffic light locations) and the vehicle's state.
+  2. Traffic light classification: in regards to the image obtained from the vehicle's dash camera.
 
 ### Traffic Light Recognition
 ### Traffic Light Classification
