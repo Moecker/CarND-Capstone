@@ -149,7 +149,7 @@ class TLDetector(object):
             closest_stop_line_index = self.get_closest_waypoint(self.pose.pose.position, self.stop_line_positions)
             closest_stop_line = self.stop_line_positions[closest_stop_line_index]
             light_wp = self.get_closest_waypoint(Point(closest_stop_line[0], closest_stop_line[1], 0))
-            if car_position < light_wp and light_wp - car_position < 150: # assume visibility is 150 meters
+            if car_position < (light_wp + 5) and light_wp - car_position < 100: # assume visibility is 100 meters
                 for real_light in self.lights:
                     light_position = real_light.pose.pose.position
                     light_x_approx = abs(light_position.x - closest_stop_line[0]) < LIGHT_LOCATION_THRESHOLD
@@ -159,7 +159,10 @@ class TLDetector(object):
 
         if light:
             state = self.get_light_state(light)
-            return light_wp, state
+            # we're going to decrease the stop index by 5 units given that
+            # our classifier works best around the track when it stops at a
+            # slightly longer distance from the traffic lights.
+            return light_wp - 5, state
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':

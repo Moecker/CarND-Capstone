@@ -44,7 +44,7 @@ class TLClassifier(object):
         dummy = np.zeros((1, 300, 300, 3))
         _ = self.model.predict(dummy, batch_size=1, verbose=0)
 
-        self.is_in_progress = False
+        #self.is_in_progress = False
         self.last_result = TrafficLight.UNKNOWN
 
 
@@ -59,8 +59,8 @@ class TLClassifier(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
         """
 
-        if self.is_in_progress:
-            return self.last_result
+        #if self.is_in_progress:
+        #    return self.last_result
         self.is_in_progress = True
 
         # adjust img arg for the model
@@ -75,6 +75,7 @@ class TLClassifier(object):
         results = self.bbox_util.detection_out(preds)
 
         if results == None or results == [] or results == [[]]:
+            print "Found no results"
             self.last_result = TrafficLight.UNKNOWN
             self.is_in_progress = False
             return self.last_result
@@ -88,11 +89,12 @@ class TLClassifier(object):
 
         # return the first signal detected
         if top_label_indices == []:
+            print "Found no matches"
             self.last_result = TrafficLight.UNKNOWN
             self.is_in_progress = False
             return self.last_result
         label = int(top_label_indices[0])
-        #print "Found label " + str(label) + " at " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print "Found label " + str(label) + " at " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if label == 1:
             self.last_result = TrafficLight.RED
         elif label == 2:
