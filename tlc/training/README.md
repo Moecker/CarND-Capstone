@@ -20,11 +20,15 @@ This code was tested with
     scipy==0.19.1
     tensorflow==1.3.0
 
-# training images
+# training images from bag file
 
     python bag_to_images.py bag/just_traffic_light.bag ssd/images /current_pose
 
-# annotation data
+# training images from simulator
+
+You can also download the latest data used to train the model (captured from the simulator) here: [capture-2.zip](https://1drv.ms/u/s!AtMG4jW974a6m8B-Q0A3tc2JbCigPw).
+
+# annotating data
 
 I used to input bounding boxes with opencv_annotation
 
@@ -40,7 +44,7 @@ formated as 'image-file-basename classno  1 boundingbox-xmin ymin width height'
 
 Then convert the text file to pickle format version 2 for python2.7 required by the project.
 
-    python gt_format.py
+    python gt_format.capture.py
 
 see gt_format.py and edit your input/output file.
 
