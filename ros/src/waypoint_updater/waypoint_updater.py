@@ -78,10 +78,6 @@ class WaypointUpdater(object):
         rospy.logdebug("Stop - Current Waypoint Velocity: " + str(current_waypoint_velocity))
 
         if stopidx != highval:
-            # we're going to decrease the stop index by 3 units given that
-            # our classifier works best around the track when it stops at a
-            # slightly longer distance from the traffic lights.
-            stopidx -= 3
             distance_to_stop = self.distance(all_waypoints, index, stopidx)
             rospy.logdebug("Stop - Distance to stop: " + str(distance_to_stop))
 
