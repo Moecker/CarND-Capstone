@@ -96,4 +96,5 @@ ENV/
 # Pycharm project settings
 .idea/
 
-checkpoints*
+checkpoints
+capture-2
