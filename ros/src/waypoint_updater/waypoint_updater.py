@@ -54,7 +54,7 @@ class WaypointUpdater(object):
         self.current_velocity = None
         self.position = None
 
-        rate = rospy.Rate(10) # in Hz
+        rate = rospy.Rate(1) # in Hz
         while not rospy.is_shutdown():
             self.update_final_waypoints()
             rate.sleep()

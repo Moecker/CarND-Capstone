@@ -12,9 +12,11 @@ from ssd_utils import BBoxUtility
 
 from styx_msgs.msg import TrafficLight
 import os
+import time
 import datetime
 import rospy
 import yaml
+import cv2
 
 class TLClassifier(object):
     def __init__(self):
@@ -44,11 +46,11 @@ class TLClassifier(object):
         dummy = np.zeros((1, 300, 300, 3))
         _ = self.model.predict(dummy, batch_size=1, verbose=0)
 
-        #self.is_in_progress = False
-        self.last_result = TrafficLight.UNKNOWN
+        self.capture_images = False
+        self.image_counts = {0: 0, 1: 0, 2: 0, 4: 0}
 
 
-    def get_classification(self, img):
+    def get_classification(self, imgInput, light_state):
         """Determines the color of the traffic light in the image
 
         Args:
@@ -59,12 +61,8 @@ class TLClassifier(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
         """
 
-        #if self.is_in_progress:
-        #    return self.last_result
-        self.is_in_progress = True
-
         # adjust img arg for the model
-        pilImg = Image.fromarray(np.uint8(img)).resize((300, 300))
+        pilImg = Image.fromarray(np.uint8(imgInput)).resize((300, 300))
         img = np.array(pilImg)
         img = image.img_to_array(img)
         inputs = np.reshape(img, (1, 300, 300, 3))  # 'inputs' expects this size
@@ -76,9 +74,8 @@ class TLClassifier(object):
 
         if results == None or results == [] or results == [[]]:
             print "Found no results"
-            self.last_result = TrafficLight.UNKNOWN
-            self.is_in_progress = False
-            return self.last_result
+            self.save_image(imgInput, light_state)
+            return TrafficLight.UNKNOWN
 
         det_label = results[0][:, 0]
         det_conf = results[0][:, 1]
@@ -90,19 +87,25 @@ class TLClassifier(object):
         # return the first signal detected
         if top_label_indices == []:
             print "Found no matches"
-            self.last_result = TrafficLight.UNKNOWN
-            self.is_in_progress = False
-            return self.last_result
+            self.save_image(imgInput, light_state)
+            return TrafficLight.UNKNOWN
         label = int(top_label_indices[0])
         print "Found label " + str(label) + " at " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if label == 1:
-            self.last_result = TrafficLight.RED
+            return TrafficLight.RED
         elif label == 2:
-            self.last_result = TrafficLight.YELLOW
+            return TrafficLight.YELLOW
         elif label == 3:
-            self.last_result = TrafficLight.GREEN
+            return TrafficLight.GREEN
         else:
-            self.last_result = TrafficLight.UNKNOWN
+            return TrafficLight.UNKNOWN
 
-        self.is_in_progress = False
-        return self.last_result
+    def save_image(self, image, state):
+        if self.capture_images and self.image_counts[state] < 100:
+            # Save to disk
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "capture", str(state))
+            if (not os.path.isdir(path)):
+                os.makedirs(path)
+            name = str(time.time()) + '.png'
+            cv2.imwrite(os.path.join(path, name), image)
+            self.image_counts[state] += 1
