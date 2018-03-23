@@ -254,7 +254,7 @@ for L in model.layers:
         L.trainable = False
 
 
-def schedule(epoch, decay=0.9):
+def schedule(epoch, decay=0.99):
     return base_lr * decay**(epoch)
 
 callbacks = [keras.callbacks.ModelCheckpoint('./checkpoints/weights.{epoch:02d}-{val_loss:.2f}.hdf5',
@@ -269,10 +269,10 @@ optim = keras.optimizers.Adam(lr=base_lr)
 # optim = keras.optimizers.SGD(lr=base_lr, momentum=0.9, decay=decay, nesterov=True)
 model.compile(optimizer=optim, loss=MultiboxLoss(NUM_CLASSES, neg_pos_ratio=2.0).compute_loss)
 
-model.load_weights(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checkpoints', 'weights.99-0.17.hdf5'), by_name=True)
+model.load_weights(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'checkpoints', 'weights.99-0.25.hdf5'), by_name=True)
 
 path_prefix = 'capture-2/'
-for i in range(0, 1):
+for i in range(0, 3):
     gen = Generator(gt, bbox_util, 1, path_prefix,
                     train_keys, val_keys,
                     (input_shape[0], input_shape[1]),

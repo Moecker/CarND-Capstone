@@ -49,6 +49,8 @@ class TLClassifier(object):
         self.capture_images = False
         self.image_counts = {0: 0, 1: 0, 2: 0, 4: 0}
 
+        self.last_classification = None
+
 
     def get_classification(self, imgInput, light_state):
         """Determines the color of the traffic light in the image
@@ -73,7 +75,11 @@ class TLClassifier(object):
         results = self.bbox_util.detection_out(preds)
 
         if results == None or results == [] or results == [[]]:
-            print "Found no results"
+            if self.last_classification is not None:
+                if (datetime.datetime.utcnow() - self.last_classification[1]).total_seconds() > 3.5:
+                    self.last_classification = None
+                else:
+                    return self.last_classification[0]
             self.save_image(imgInput, light_state)
             return TrafficLight.UNKNOWN
 
@@ -86,19 +92,30 @@ class TLClassifier(object):
 
         # return the first signal detected
         if top_label_indices == []:
-            print "Found no matches"
+            if self.last_classification is not None:
+                if (datetime.datetime.utcnow() - self.last_classification[1]).total_seconds() > 3.5:
+                    self.last_classification = None
+                else:
+                    return self.last_classification[0]
             self.save_image(imgInput, light_state)
             return TrafficLight.UNKNOWN
         label = int(top_label_indices[0])
-        print "Found label " + str(label) + " at " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        #print "Found label " + str(label) + " at " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if label == 1:
-            return TrafficLight.RED
+            self.last_classification = (TrafficLight.RED, datetime.datetime.utcnow())
         elif label == 2:
-            return TrafficLight.YELLOW
+            self.last_classification = (TrafficLight.YELLOW, datetime.datetime.utcnow())
         elif label == 3:
-            return TrafficLight.GREEN
+            self.last_classification = (TrafficLight.GREEN, datetime.datetime.utcnow())
         else:
+            if self.last_classification is not None:
+                if (datetime.datetime.utcnow() - self.last_classification[1]).total_seconds() > 3.5:
+                    self.last_classification = None
+                else:
+                    return self.last_classification[0]
             return TrafficLight.UNKNOWN
+
+        return self.last_classification[0]
 
     def save_image(self, image, state):
         if self.capture_images and self.image_counts[state] < 100:
