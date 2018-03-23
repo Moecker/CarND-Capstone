@@ -60,6 +60,6 @@ If need, you also need to edit your image folder at line 241.
 
 run a training script
 
-	python SSD_train.py
+	python SSD_train.capture.py
 
 you can get new checkout files in checkpoints/ folder.

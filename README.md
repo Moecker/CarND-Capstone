@@ -124,13 +124,14 @@ The traffic light classification solves two tasks.
   - Find traffic lights as bounding boxes in the camera image
   - Predict the color states of the traffic lights detected
 
-Deep Learning is a successful technique to solve them at once. The traffic light classification applies SSD:Single Shot Multibox Detector which is one of the powerful deep learning algorithms.
+Deep Learning is a successful technique to solve them at once. The traffic light classification applies SSD: Single Shot Multibox Detector which is one of the most powerful deep learning algorithms at the time of this writing.
+
 To classify the color state, the traffic light classification does:
 
-   1. resize camera image to (300, 300) for the SSD
-   2. utilize the SSD and predict traffic lights with their color state, confidence and boundary box
-   3. get detections with the confidence is larger than 0.6
-   4. return the color state of the top of the detection list
+   1. Resize camera image to (300, 300) for the SSD
+   2. Utilize the SSD and predict traffic lights with their color state, confidence and boundary box
+   3. Get detections with the confidence is larger than 0.6
+   4. Return the color state of the top of the detection list
 
 The color state values are defined in TrafficLight class as below.
 
@@ -139,6 +140,178 @@ The color state values are defined in TrafficLight class as below.
   - TrafficLight.GREEN
   - TrafficLight.UNKNOWN
 
+The SSD model is based on the following:
+
+  - [SSD: Single Shot MultiBox Detector](https://github.com/weiliu89/caffe/tree/ssd)
+  - [arXiv paper](http://arxiv.org/abs/1512.02325).
+
+This is the summary of model as described by Keras:
+```
+____________________________________________________________________________________________________
+Layer (type)                     Output Shape          Param #     Connected to
+====================================================================================================
+input_1 (InputLayer)             (None, 300, 300, 3)   0
+____________________________________________________________________________________________________
+conv1_1 (Conv2D)                 (None, 300, 300, 64)  1792        input_1[0][0]
+____________________________________________________________________________________________________
+conv1_2 (Conv2D)                 (None, 300, 300, 64)  36928       conv1_1[0][0]
+____________________________________________________________________________________________________
+pool1 (MaxPooling2D)             (None, 150, 150, 64)  0           conv1_2[0][0]
+____________________________________________________________________________________________________
+conv2_1 (Conv2D)                 (None, 150, 150, 128) 73856       pool1[0][0]
+____________________________________________________________________________________________________
+conv2_2 (Conv2D)                 (None, 150, 150, 128) 147584      conv2_1[0][0]
+____________________________________________________________________________________________________
+pool2 (MaxPooling2D)             (None, 75, 75, 128)   0           conv2_2[0][0]
+____________________________________________________________________________________________________
+conv3_1 (Conv2D)                 (None, 75, 75, 256)   295168      pool2[0][0]
+____________________________________________________________________________________________________
+conv3_2 (Conv2D)                 (None, 75, 75, 256)   590080      conv3_1[0][0]
+____________________________________________________________________________________________________
+conv3_3 (Conv2D)                 (None, 75, 75, 256)   590080      conv3_2[0][0]
+____________________________________________________________________________________________________
+pool3 (MaxPooling2D)             (None, 38, 38, 256)   0           conv3_3[0][0]
+____________________________________________________________________________________________________
+conv4_1 (Conv2D)                 (None, 38, 38, 512)   1180160     pool3[0][0]
+____________________________________________________________________________________________________
+conv4_2 (Conv2D)                 (None, 38, 38, 512)   2359808     conv4_1[0][0]
+____________________________________________________________________________________________________
+conv4_3 (Conv2D)                 (None, 38, 38, 512)   2359808     conv4_2[0][0]
+____________________________________________________________________________________________________
+pool4 (MaxPooling2D)             (None, 19, 19, 512)   0           conv4_3[0][0]
+____________________________________________________________________________________________________
+conv5_1 (Conv2D)                 (None, 19, 19, 512)   2359808     pool4[0][0]
+____________________________________________________________________________________________________
+conv5_2 (Conv2D)                 (None, 19, 19, 512)   2359808     conv5_1[0][0]
+____________________________________________________________________________________________________
+conv5_3 (Conv2D)                 (None, 19, 19, 512)   2359808     conv5_2[0][0]
+____________________________________________________________________________________________________
+pool5 (MaxPooling2D)             (None, 19, 19, 512)   0           conv5_3[0][0]
+____________________________________________________________________________________________________
+fc6 (Conv2D)                     (None, 19, 19, 1024)  4719616     pool5[0][0]
+____________________________________________________________________________________________________
+fc7 (Conv2D)                     (None, 19, 19, 1024)  1049600     fc6[0][0]
+____________________________________________________________________________________________________
+conv6_1 (Conv2D)                 (None, 19, 19, 256)   262400      fc7[0][0]
+____________________________________________________________________________________________________
+conv6_2 (Conv2D)                 (None, 10, 10, 512)   1180160     conv6_1[0][0]
+____________________________________________________________________________________________________
+conv7_1 (Conv2D)                 (None, 10, 10, 128)   65664       conv6_2[0][0]
+____________________________________________________________________________________________________
+conv7_1z (ZeroPadding2D)         (None, 12, 12, 128)   0           conv7_1[0][0]
+____________________________________________________________________________________________________
+conv7_2 (Conv2D)                 (None, 5, 5, 256)     295168      conv7_1z[0][0]
+____________________________________________________________________________________________________
+conv8_1 (Conv2D)                 (None, 5, 5, 128)     32896       conv7_2[0][0]
+____________________________________________________________________________________________________
+conv4_3_norm (Normalize)         (None, 38, 38, 512)   512         conv4_3[0][0]
+____________________________________________________________________________________________________
+conv8_2 (Conv2D)                 (None, 3, 3, 256)     295168      conv8_1[0][0]
+____________________________________________________________________________________________________
+pool6 (GlobalAveragePooling2D)   (None, 256)           0           conv8_2[0][0]
+____________________________________________________________________________________________________
+conv4_3_norm_mbox_conf_4 (Conv2D (None, 38, 38, 12)    55308       conv4_3_norm[0][0]
+____________________________________________________________________________________________________
+fc7_mbox_conf_4 (Conv2D)         (None, 19, 19, 24)    221208      fc7[0][0]
+____________________________________________________________________________________________________
+conv6_2_mbox_conf_4 (Conv2D)     (None, 10, 10, 24)    110616      conv6_2[0][0]
+____________________________________________________________________________________________________
+conv7_2_mbox_conf_4 (Conv2D)     (None, 5, 5, 24)      55320       conv7_2[0][0]
+____________________________________________________________________________________________________
+conv8_2_mbox_conf_4 (Conv2D)     (None, 3, 3, 24)      55320       conv8_2[0][0]
+____________________________________________________________________________________________________
+conv4_3_norm_mbox_loc (Conv2D)   (None, 38, 38, 12)    55308       conv4_3_norm[0][0]
+____________________________________________________________________________________________________
+fc7_mbox_loc (Conv2D)            (None, 19, 19, 24)    221208      fc7[0][0]
+____________________________________________________________________________________________________
+conv6_2_mbox_loc (Conv2D)        (None, 10, 10, 24)    110616      conv6_2[0][0]
+____________________________________________________________________________________________________
+conv7_2_mbox_loc (Conv2D)        (None, 5, 5, 24)      55320       conv7_2[0][0]
+____________________________________________________________________________________________________
+conv8_2_mbox_loc (Conv2D)        (None, 3, 3, 24)      55320       conv8_2[0][0]
+____________________________________________________________________________________________________
+conv4_3_norm_mbox_conf_flat (Fla (None, 17328)         0           conv4_3_norm_mbox_conf_4[0][0]
+____________________________________________________________________________________________________
+fc7_mbox_conf_flat (Flatten)     (None, 8664)          0           fc7_mbox_conf_4[0][0]
+____________________________________________________________________________________________________
+conv6_2_mbox_conf_flat (Flatten) (None, 2400)          0           conv6_2_mbox_conf_4[0][0]
+____________________________________________________________________________________________________
+conv7_2_mbox_conf_flat (Flatten) (None, 600)           0           conv7_2_mbox_conf_4[0][0]
+____________________________________________________________________________________________________
+conv8_2_mbox_conf_flat (Flatten) (None, 216)           0           conv8_2_mbox_conf_4[0][0]
+____________________________________________________________________________________________________
+pool6_mbox_conf_flat_4 (Dense)   (None, 24)            6168        pool6[0][0]
+____________________________________________________________________________________________________
+conv4_3_norm_mbox_loc_flat (Flat (None, 17328)         0           conv4_3_norm_mbox_loc[0][0]
+____________________________________________________________________________________________________
+fc7_mbox_loc_flat (Flatten)      (None, 8664)          0           fc7_mbox_loc[0][0]
+____________________________________________________________________________________________________
+conv6_2_mbox_loc_flat (Flatten)  (None, 2400)          0           conv6_2_mbox_loc[0][0]
+____________________________________________________________________________________________________
+conv7_2_mbox_loc_flat (Flatten)  (None, 600)           0           conv7_2_mbox_loc[0][0]
+____________________________________________________________________________________________________
+conv8_2_mbox_loc_flat (Flatten)  (None, 216)           0           conv8_2_mbox_loc[0][0]
+____________________________________________________________________________________________________
+pool6_mbox_loc_flat (Dense)      (None, 24)            6168        pool6[0][0]
+____________________________________________________________________________________________________
+mbox_conf (Concatenate)          (None, 29232)         0           conv4_3_norm_mbox_conf_flat[0][0]
+                                                                   fc7_mbox_conf_flat[0][0]
+                                                                   conv6_2_mbox_conf_flat[0][0]
+                                                                   conv7_2_mbox_conf_flat[0][0]
+                                                                   conv8_2_mbox_conf_flat[0][0]
+                                                                   pool6_mbox_conf_flat_4[0][0]
+____________________________________________________________________________________________________
+pool6_reshaped (Reshape)         (None, 1, 1, 256)     0           pool6[0][0]
+____________________________________________________________________________________________________
+mbox_loc (Concatenate)           (None, 29232)         0           conv4_3_norm_mbox_loc_flat[0][0]
+                                                                   fc7_mbox_loc_flat[0][0]
+                                                                   conv6_2_mbox_loc_flat[0][0]
+                                                                   conv7_2_mbox_loc_flat[0][0]
+                                                                   conv8_2_mbox_loc_flat[0][0]
+                                                                   pool6_mbox_loc_flat[0][0]
+____________________________________________________________________________________________________
+mbox_conf_logits (Reshape)       (None, 7308, 4)       0           mbox_conf[0][0]
+____________________________________________________________________________________________________
+conv4_3_norm_mbox_priorbox (Prio (None, 4332, 8)       0           conv4_3_norm[0][0]
+____________________________________________________________________________________________________
+fc7_mbox_priorbox (PriorBox)     (None, 2166, 8)       0           fc7[0][0]
+____________________________________________________________________________________________________
+conv6_2_mbox_priorbox (PriorBox) (None, 600, 8)        0           conv6_2[0][0]
+____________________________________________________________________________________________________
+conv7_2_mbox_priorbox (PriorBox) (None, 150, 8)        0           conv7_2[0][0]
+____________________________________________________________________________________________________
+conv8_2_mbox_priorbox (PriorBox) (None, 54, 8)         0           conv8_2[0][0]
+____________________________________________________________________________________________________
+pool6_mbox_priorbox (PriorBox)   (None, 6, 8)          0           pool6_reshaped[0][0]
+____________________________________________________________________________________________________
+mbox_loc_final (Reshape)         (None, 7308, 4)       0           mbox_loc[0][0]
+____________________________________________________________________________________________________
+mbox_conf_final (Activation)     (None, 7308, 4)       0           mbox_conf_logits[0][0]
+____________________________________________________________________________________________________
+mbox_priorbox (Concatenate)      (None, 7308, 8)       0           conv4_3_norm_mbox_priorbox[0][0]
+                                                                   fc7_mbox_priorbox[0][0]
+                                                                   conv6_2_mbox_priorbox[0][0]
+                                                                   conv7_2_mbox_priorbox[0][0]
+                                                                   conv8_2_mbox_priorbox[0][0]
+                                                                   pool6_mbox_priorbox[0][0]
+____________________________________________________________________________________________________
+predictions (Concatenate)        (None, 7308, 16)      0           mbox_loc_final[0][0]
+                                                                   mbox_conf_final[0][0]
+                                                                   mbox_priorbox[0][0]
+====================================================================================================
+Total params: 23,623,752
+Trainable params: 23,623,752
+Non-trainable params: 0
+```
+
+### Training of the model
+The model loads different weight files depending on the mode of operation: when running in the simulator we load weights that have been trained using images taken directly from the simulator in as many different poses as possible. The images were obtained by instrumenting `tl_classifier.py` and storing images with their ground truth information whenever it was unable to properly categorize it. We captured 100 images at a time, and the body of images grew to about 2078, almost evenly distributed among red, yellow and green lights. The images were then manually labeled using `opencv_annotation`.
+
+![opencv_annotation](imgs/opencv_annotation.png)
+
+Once the annotated images were ready, a model was trained from scratch for 100 epochs, taking 20% of the images as testing images, and 80% as training images. Given the model architecture and the size of the training data, each epoch took around 125 seconds to complete on an NVidia GTX 1080 GPU. Training on a CPU was impractical at these scales.
+
+The code used to train the model can be found under [`tlc/training/`](./tlc/training/), follow the instructions [here](./tlc/training/README.md) for more information. This repository doesn't include the images as they accounted for over 2GB of data, but they can be downloaded from here: [capture-2.zip](https://1drv.ms/u/s!AtMG4jW974a6m8B-Q0A3tc2JbCigPw). You can place the data under the [`tlc/training/ssd/`](./tlc/training/ssd/) directory and train the model yourself.
 
 # Results
 ## Videos
@@ -147,6 +320,7 @@ Description | Link
 Driving on the test lot simulation scenario without camera and traffic light info  | [![Video](https://img.youtube.com/vi/K93AdV7zbSs/0.jpg)](https://www.youtube.com/watch?v=K93AdV7zbSs)
 Driving on the highway simulation scenario ignoring traffic lights with temporary manual override  | [![Video](https://img.youtube.com/vi/VR0Se5eRiIc/0.jpg)](https://www.youtube.com/watch?v=VR0Se5eRiIc)
 Driving on the highway simulation scenario adhering to red traffic light (state directly taken from simulator)  | [![Video](https://img.youtube.com/vi/qFJfD4xo16s/0.jpg)](https://www.youtube.com/watch?v=qFJfD4xo16s)
+Driving on the highway simulation scenario, full loop around the track, temporary manual override  | [![Video](https://img.youtube.com/vi/TXVXI9EE7iY/0.jpg)](https://www.youtube.com/watch?v=TXVXI9EE7iY)
 
 # Retrospective
 ## Team Collaboration

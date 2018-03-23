@@ -35,6 +35,7 @@ class TLClassifier(object):
 
         # Traffic Light Classifier model and its weights
         self.model = SSD300(input_shape, num_classes=NUM_CLASSES)
+        print(self.model.summary())
         self.model.load_weights(os.path.join(path_to_resources, self.config['classifier_weights_file']), by_name=True)
 
         # prevent TensorFlow's ValueError when no raised backend
